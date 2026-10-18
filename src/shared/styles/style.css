@@ -1,0 +1,177 @@
+
+
+:root {
+  --color-bg: #faf8f3;
+  --color-surface: #ffffff;
+  --color-border: #e4e0d6;
+  --color-text: #2a2723;
+  --color-text-muted: #6b665c;
+  --color-accent: #1f6f6b;
+
+  --font-serif: "Georgia", "Iowan Old Style", "Times New Roman", serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-header-container {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-4) var(--space-3) 0;
+}
+
+.app-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.app-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.app-brand h1 {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  margin: 0 0 4px;
+  color: var(--color-text);
+}
+
+.app-brand p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.case-main-nav {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+}
+
+.case-nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+.case-nav-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.case-nav-btn.is-active {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.case-section {
+  display: none;
+}
+
+.case-section.is-active {
+  display: block;
+}
+
+.button {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.button.is-active {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+}
+
+.case-section--divider {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-5);
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: var(--space-2) var(--space-3);
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: opacity 120ms ease;
+}
+
+.app-footer {
+  max-width: 1100px;
+  margin: var(--space-5) auto var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.app-footer a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}

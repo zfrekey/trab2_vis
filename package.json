@@ -1,0 +1,19 @@
+{
+  "name": "trab2_vis",
+  "version": "1.0.0",
+  "description": "Trabalho 02 - Sistema de Análise Visual de Dados",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
+    "d3": "^7.9.0",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}
