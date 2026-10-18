@@ -37,7 +37,7 @@ function readGcat(file, cols) {
 let initPromise = null;
 
 // cria as tabelas limpas no duckdb uma unica vez
-// launches: so lancamentos orbitais (LaunchCode comeca com "O"), com ano e sucesso
+// launches: so lancamentos orbitais (LaunchCode comeca com "O"), ja com ator, setor, base e sucesso
 export function initLaunchData() {
   if (!initPromise) {
     initPromise = (async () => {
@@ -65,19 +65,66 @@ export function initLaunchData() {
       // Launch_Date vem como "1957 Oct  4 1928:34", o ano sao os 4 primeiros chars
       // jd (data juliana) e numerico, usar ele pra ordenar cronologicamente
       // Agency pode ter varios operadores ("SPOG/AVKO"), usamos o primeiro
+      //
+      // decisoes de dados (justificativas no PLANO.md, secao 3):
+      // - ator = pais do OPERADOR (quem lanca), nao da base (de onde lanca)
+      // - SU e RU viram uma linhagem so, "URSS/Rússia" (mesmo programa, bases e foguetes)
+      // - paises europeus + ESA/ELDO viram "Europa"; o resto com pouco volume vira "Outros"
+      // - setor vem da classe do operador: B comercial, C civil, D militar
+      // - sucesso usa a "fracao de sucesso" do McDowell: OS = 1, OF = 0,
+      //   OS80 = 0.8, OF40 = 0.4 (sucesso parcial). OE (explosao na plataforma)
+      //   e OA (aborto) nao chegaram a voar, entao ficam fora da taxa (NULL)
       await query(`
         CREATE TABLE IF NOT EXISTS launches AS
-        SELECT trim(Launch_Tag) AS tag,
-               CAST(substr(trim(Launch_Date), 1, 4) AS INTEGER) AS year,
-               trim(Launch_Date) AS date_raw,
-               TRY_CAST(trim(Launch_JD) AS DOUBLE) AS jd,
-               trim(LV_Type) AS vehicle,
-               trim(Launch_Site) AS site,
-               split_part(trim(Agency), '/', 1) AS org,
-               trim(LaunchCode) AS launch_code,
-               trim(LaunchCode) LIKE 'OS%' AS success
-        FROM ${readGcat(FILES.launch, LAUNCH_COLS)}
-        WHERE trim(LaunchCode) LIKE 'O%';
+        WITH raw AS (
+          SELECT trim(Launch_Tag) AS tag,
+                 CAST(substr(trim(Launch_Date), 1, 4) AS INTEGER) AS year,
+                 trim(Launch_Date) AS date_raw,
+                 TRY_CAST(trim(Launch_JD) AS DOUBLE) AS jd,
+                 trim(LV_Type) AS vehicle,
+                 trim(Launch_Site) AS site,
+                 split_part(trim(Agency), '/', 1) AS org,
+                 trim(LaunchCode) AS launch_code,
+                 substr(trim(LaunchCode), 2, 1) AS result_letter,
+                 TRY_CAST(substr(trim(LaunchCode), 3) AS INTEGER) AS result_pct
+          FROM ${readGcat(FILES.launch, LAUNCH_COLS)}
+          WHERE trim(LaunchCode) LIKE 'O%'
+        )
+        SELECT r.tag, r.year, r.date_raw, r.jd, r.vehicle, r.launch_code,
+               r.org, o.org_name, o.org_state,
+               CASE
+                 WHEN o.org_state = 'US' THEN 'EUA'
+                 WHEN o.org_state IN ('SU', 'RU') THEN 'URSS/Rússia'
+                 WHEN o.org_state = 'CN' THEN 'China'
+                 WHEN o.org_state IN ('F', 'D', 'I', 'UK', 'I-ESA', 'I-ELDO') THEN 'Europa'
+                 WHEN o.org_state = 'J' THEN 'Japão'
+                 WHEN o.org_state = 'IN' THEN 'Índia'
+                 ELSE 'Outros'
+               END AS actor,
+               CASE o.org_class
+                 WHEN 'B' THEN 'Comercial'
+                 WHEN 'C' THEN 'Civil'
+                 WHEN 'D' THEN 'Militar'
+                 ELSE 'Indefinido'
+               END AS sector,
+               r.site, s.site_name, s.site_state, s.lat, s.lon,
+               CASE
+                 WHEN r.result_letter = 'E' THEN 'explosao_solo'
+                 WHEN r.result_letter = 'A' THEN 'aborto'
+                 WHEN r.result_letter = 'U' THEN 'incerto'
+                 WHEN r.result_pct IS NOT NULL THEN 'parcial'
+                 WHEN r.result_letter = 'S' THEN 'sucesso'
+                 ELSE 'falha'
+               END AS outcome,
+               CASE
+                 WHEN r.result_letter NOT IN ('S', 'F') THEN NULL
+                 WHEN r.result_pct IS NOT NULL THEN r.result_pct / 100.0
+                 WHEN r.result_letter = 'S' THEN 1.0
+                 ELSE 0.0
+               END AS success_fraction
+        FROM raw r
+        LEFT JOIN orgs o ON o.org = r.org
+        LEFT JOIN sites s ON s.site = r.site;
       `);
 
       await query(`
@@ -95,7 +142,7 @@ export async function getSummary() {
   await initLaunchData();
   const [row] = await query(`
     SELECT count(*) AS total, min(year) AS first_year, max(year) AS last_year,
-           avg(success::INTEGER) AS success_rate
+           avg(success_fraction) AS success_rate
     FROM launches;
   `);
   return row;

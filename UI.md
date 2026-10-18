@@ -31,14 +31,23 @@ mantendo o estilo e trocando as cores.
    para a mesma função.
 
 3. Criar tokens de dados em src/shared/styles/palette.js (exportados para o D3):
-   - categórica para atores (até 7 + "Outros" em cinza #b8b4aa): tons
+   - categórica para os 7 atores (valores da coluna `actor`): tons
      sóbrios que combinem com creme, distinguíveis por daltônicos e sem
      competir com o laranja de seleção. Sugestão inicial para validar:
      EUA #3b6ea5, URSS/Rússia #a23b3b, China #c99a2e, Europa #4f8a6e,
-     Japão #7a5c99, Índia #2f8f9d, Privadas (pode ser por empresa) #6b7a8f
+     Japão #7a5c99, Índia #2f8f9d, Outros #b8b4aa (cinza)
+   - categórica para os setores (coluna `sector`), visualmente distinta
+     da de atores porque a linha do tempo alterna entre as duas:
+     Comercial #d9a441, Civil #5b8db8, Militar #5e5a52, Indefinido #d6d2c8
+     (Comercial é a cor "quente" de propósito: é a história da era comercial)
    - sequencial (mapa/intensidade): do creme #f1efe8 ao acento #1d3557
-   - sucesso × falha: NÃO usar verde/vermelho. Sucesso em cor neutra,
-     falha com marcador "✕" e/ou o laranja de destaque.
+   - sucesso × falha (coluna `outcome`): NÃO usar verde/vermelho. Sucesso
+     em cor neutra, falha com marcador "✕", parcial com marcador vazado,
+     explosão na plataforma/aborto com marcador "△".
+   - anotações de marcos históricos (src/data/milestones.js) na linha do
+     tempo: linha vertical fina tracejada + rótulo pequeno em serifa
+     itálica, estilo nota de rodapé de revista. Não podem competir com os
+     dados (cor --color-text-muted, opacidade baixa).
    - elementos não selecionados ficam com opacidade ~0.25 quando há seleção
      (linked highlighting).
    Validar o contraste do texto (WCAG AA) e simular daltonismo; ajustar os
@@ -47,7 +56,7 @@ mantendo o estilo e trocando as cores.
 4. Layout em tela única (não usar mais abas por caso como no T1):
    ┌──────────────────────────────────────────────────────────┐
    │ Cabeçalho: título serifa + subtítulo + botão "Sobre os   │
-   │ dados" + filtros globais (agrupar por país/operador)     │
+   │ dados" + alternância global "Quem lança" / "Que setor"   │
    ├──────────────────────────────────────────┬───────────────┤
    │ Linha do tempo (área empilhada), largura │ Painel de     │
    │ total, com brush de anos                 │ detalhe do    │
