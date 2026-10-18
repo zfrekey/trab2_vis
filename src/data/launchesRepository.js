@@ -1,6 +1,10 @@
 import { registerLocalFile, query } from "../shared/data/duckdb.js";
 
-// arquivos do GCAT (Jonathan McDowell) + OWID, servidos estaticos de public/data
+// Todo o carregamento e a limpeza dos dados de lançamentos ficam aqui,
+// separados do código de desenho. As views só consultam as tabelas prontas.
+
+// Arquivos do GCAT (Jonathan McDowell) e do OWID, servidos estáticos de
+// public/data (sem backend, como exige o enunciado).
 const FILES = {
   launch: "launch.tsv",
   sites: "sites.tsv",
@@ -8,8 +12,9 @@ const FILES = {
   owid: "owid-space-objects.csv",
 };
 
-// os tsv do GCAT tem 2 linhas de cabecalho (nomes com "#" + "# Updated ...")
-// entao pulamos as duas e passamos os nomes das colunas na mao
+// Os TSVs do GCAT têm 2 linhas de cabeçalho (nomes com "#" e "# Updated ..."),
+// o que confunde a detecção automática do DuckDB. Por isso pulamos as duas e
+// passamos os nomes das colunas explicitamente.
 const LAUNCH_COLS = [
   "Launch_Tag", "Launch_JD", "Launch_Date", "LV_Type", "Variant", "Fairing",
   "Flight_ID", "Flight", "Mission", "FlightCode", "Platform", "Launch_Site",
@@ -28,6 +33,8 @@ const ORG_COLS = [
   "EName", "UName",
 ];
 
+// Tudo é lido como texto (all_varchar) porque o GCAT usa "-" para vazio e
+// alinha números com espaços; a conversão de tipos é feita depois, com TRY_CAST.
 function readGcat(file, cols) {
   const names = cols.map((c) => `'${c}'`).join(", ");
   return `read_csv('${file}', delim='\\t', header=false, skip=2, all_varchar=true,
@@ -36,8 +43,11 @@ function readGcat(file, cols) {
 
 let initPromise = null;
 
-// cria as tabelas limpas no duckdb uma unica vez
-// launches: so lancamentos orbitais (LaunchCode comeca com "O"), ja com ator, setor, base e sucesso
+// Idempotente: os arquivos só são buscados e as tabelas só são criadas uma
+// vez, mesmo que várias views chamem esta função.
+// `launches` contém só lançamentos orbitais (LaunchCode começa com "O") e já
+// vem desnormalizada, com ator, setor, base e sucesso, para que as queries
+// das views sejam simples agregações.
 export function initLaunchData() {
   if (!initPromise) {
     initPromise = (async () => {
@@ -62,18 +72,22 @@ export function initLaunchData() {
         FROM ${readGcat(FILES.orgs, ORG_COLS)};
       `);
 
-      // Launch_Date vem como "1957 Oct  4 1928:34", o ano sao os 4 primeiros chars
-      // jd (data juliana) e numerico, usar ele pra ordenar cronologicamente
-      // Agency pode ter varios operadores ("SPOG/AVKO"), usamos o primeiro
+      // Launch_Date vem como "1957 Oct  4 1928:34"; o ano são os 4 primeiros
+      // caracteres. Para ordem cronológica usamos `jd` (data juliana), porque o
+      // texto não ordena corretamente dentro do ano ("Apr" < "Jan").
+      // Agency pode ter vários operadores ("SPOG/AVKO"); usamos o primeiro.
       //
-      // decisoes de dados (justificativas no PLANO.md, secao 3):
-      // - ator = pais do OPERADOR (quem lanca), nao da base (de onde lanca)
-      // - SU e RU viram uma linhagem so, "URSS/Rússia" (mesmo programa, bases e foguetes)
-      // - paises europeus + ESA/ELDO viram "Europa"; o resto com pouco volume vira "Outros"
-      // - setor vem da classe do operador: B comercial, C civil, D militar
-      // - sucesso usa a "fracao de sucesso" do McDowell: OS = 1, OF = 0,
-      //   OS80 = 0.8, OF40 = 0.4 (sucesso parcial). OE (explosao na plataforma)
-      //   e OA (aborto) nao chegaram a voar, entao ficam fora da taxa (NULL)
+      // Decisões de dados (justificativas no PLANO.md, seção 3):
+      // - Ator é o país do OPERADOR (quem lança), não o da base (de onde se
+      //   lança). A geografia continua visível no mapa das bases.
+      // - SU e RU viram uma linhagem só, "URSS/Rússia": mesmo programa, bases e
+      //   foguetes. Separar criaria uma queda artificial em 1991.
+      // - Países europeus, ESA e ELDO viram "Europa"; atores com pouco volume
+      //   viram "Outros", limitando a paleta categórica a 7 cores.
+      // - Setor vem da classe do operador no GCAT: B comercial, C civil, D militar.
+      // - Sucesso usa a "fração de sucesso" do McDowell: OS = 1, OF = 0,
+      //   OS80 = 0,8, OF40 = 0,4 (sucesso parcial). OE (explosão na plataforma)
+      //   e OA (aborto) não chegaram a voar, então ficam fora da taxa (NULL).
       await query(`
         CREATE TABLE IF NOT EXISTS launches AS
         WITH raw AS (

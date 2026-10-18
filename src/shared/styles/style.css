@@ -1,12 +1,18 @@
-
-
+/* Tokens e estilos base compartilhados.
+   Paleta "arquivo espacial": mantém o creme editorial do T1 e troca a tinta.
+   O acento (marinho) é a estrutura da interface; o highlight (laranja) é o
+   estado de seleção (brush, chips de filtro, contorno do item selecionado).
+   Nunca os dois na mesma função, para a seleção não se confundir com navegação.
+   Contraste no fundo: texto 14,7:1 e secundário 5,5:1 (AA para texto);
+   highlight 3,5:1 (suficiente para marcas gráficas). */
 :root {
   --color-bg: #faf8f3;
   --color-surface: #ffffff;
-  --color-border: #e4e0d6;
-  --color-text: #2a2723;
-  --color-text-muted: #6b665c;
-  --color-accent: #1f6f6b;
+  --color-border: #e2e0da;
+  --color-text: #1c2433;
+  --color-text-muted: #5d6676;
+  --color-accent: #1d3557;
+  --color-highlight: #d9622b;
 
   --font-serif: "Georgia", "Iowan Old Style", "Times New Roman", serif;
   --font-sans:

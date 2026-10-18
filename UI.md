@@ -2,6 +2,8 @@
 
 Copie o bloco abaixo para o assistente de código. Ele implementa só a **identidade visual e o layout**, não as views.
 
+> **Já aplicado no repositório:** os itens 2 e 3 (tokens de cor em `src/shared/styles/style.css` e cores dos dados em `src/shared/styles/palette.js`, com contraste e daltonismo validados). O assistente só precisa usá-los e fazer os itens 4 e 5.
+
 ---
 
 ```
@@ -19,7 +21,7 @@ mantendo o estilo e trocando as cores.
    - escala de espaçamento --space-1 a --space-5, largura máxima 1100px
    - o tooltip e os botões existentes
 
-2. TROCAR a paleta (só os tokens do :root) para "arquivo espacial":
+2. [JÁ FEITO, só conferir] Paleta "arquivo espacial" nos tokens do :root:
    --color-bg:         #faf8f3   (mantém o creme)
    --color-surface:    #ffffff
    --color-border:     #e2e0da
@@ -30,16 +32,20 @@ mantendo o estilo e trocando as cores.
    Regra: o acento é estrutura, o highlight é seleção. Nunca usar os dois
    para a mesma função.
 
-3. Criar tokens de dados em src/shared/styles/palette.js (exportados para o D3):
-   - categórica para os 7 atores (valores da coluna `actor`): tons
-     sóbrios que combinem com creme, distinguíveis por daltônicos e sem
-     competir com o laranja de seleção. Sugestão inicial para validar:
-     EUA #3b6ea5, URSS/Rússia #a23b3b, China #c99a2e, Europa #4f8a6e,
-     Japão #7a5c99, Índia #2f8f9d, Outros #b8b4aa (cinza)
-   - categórica para os setores (coluna `sector`), visualmente distinta
-     da de atores porque a linha do tempo alterna entre as duas:
-     Comercial #d9a441, Civil #5b8db8, Militar #5e5a52, Indefinido #d6d2c8
-     (Comercial é a cor "quente" de propósito: é a história da era comercial)
+3. [JÁ FEITO, só usar] Cores dos dados em src/shared/styles/palette.js
+   (ACTOR_COLORS, SECTOR_COLORS, SEQUENTIAL, OUTCOME_MARKS, FADED_OPACITY):
+   - categórica para os 7 atores (valores da coluna `actor`), validada
+     (contraste >= 3,5:1 no fundo creme, checada em simulação de daltonismo):
+     URSS/Rússia #a63a3a, EUA #0f5f9e, China #b5770d, Europa #2e7d4f,
+     Japão #a3487f, Índia #00808a, Outros #b8b4aa (cinza, de propósito)
+     Japão/Índia é o par mais próximo para daltônicos: ROTULAR AS SÉRIES
+     DIRETAMENTE (texto na cor da série no fim da linha/área) em vez de
+     depender só de legenda.
+   - categórica para os setores (coluna `sector`):
+     Comercial #b5770d, Civil #0f5f9e, Militar #5e5a52, Indefinido #d6d2c8
+     (Comercial é a única cor quente de propósito: é a história da era comercial)
+   - item selecionado mantém a própria cor com contorno em --color-highlight;
+     o laranja não substitui a cor da série.
    - sequencial (mapa/intensidade): do creme #f1efe8 ao acento #1d3557
    - sucesso × falha (coluna `outcome`): NÃO usar verde/vermelho. Sucesso
      em cor neutra, falha com marcador "✕", parcial com marcador vazado,
@@ -50,8 +56,6 @@ mantendo o estilo e trocando as cores.
      dados (cor --color-text-muted, opacidade baixa).
    - elementos não selecionados ficam com opacidade ~0.25 quando há seleção
      (linked highlighting).
-   Validar o contraste do texto (WCAG AA) e simular daltonismo; ajustar os
-   hex se necessário.
 
 4. Layout em tela única (não usar mais abas por caso como no T1):
    ┌──────────────────────────────────────────────────────────┐

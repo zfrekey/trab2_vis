@@ -21,6 +21,7 @@ const pointsFormatter = new Intl.NumberFormat("pt-BR", {
   signDisplay: "exceptZero",
 });
 
+// CSV guarda o índice como proporção (-0.25 = -25%); aqui vira percentual.
 export function formatPercent(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
   return percentFormatter.format(value);
@@ -46,6 +47,7 @@ export function formatOrdinal(rank) {
   return `${rank}º`;
 }
 
+// Diferença entre dois índices (ex: adjustment_effect), em pontos percentuais.
 export function formatPercentagePoints(value) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
   return `${pointsFormatter.format(value * 100)} p.p.`;

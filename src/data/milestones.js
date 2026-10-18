@@ -1,5 +1,6 @@
-// marcos historicos para anotar a linha do tempo (camada narrativa)
-// ajudam o publico leigo a ligar picos e quedas a eventos reais
+// Marcos históricos anotados na linha do tempo (camada narrativa). Ajudam o
+// público leigo a ligar picos e quedas da série a eventos reais, sem precisar
+// conhecer a história da exploração espacial.
 export const MILESTONES = [
   { date: "1957-10-04", label: "Sputnik 1", actor: "URSS/Rússia" },
   { date: "1961-04-12", label: "Gagarin, 1º humano em órbita", actor: "URSS/Rússia" },

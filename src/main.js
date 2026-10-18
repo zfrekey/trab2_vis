@@ -1,8 +1,8 @@
 import "./shared/styles/style.css";
 import { getSummary } from "./data/launchesRepository.js";
 
-// esqueleto inicial: so confirma que o duckdb carrega os dados
-// o dashboard de verdade segue o PLANO.md e o UI.md
+// Esqueleto inicial: só confirma que o DuckDB carrega os dados.
+// O dashboard de verdade segue o PLANO.md e o UI.md.
 const app = document.getElementById("app");
 
 app.innerHTML = `

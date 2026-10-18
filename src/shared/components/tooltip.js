@@ -17,6 +17,7 @@ export function createTooltip(container) {
     el.style("opacity", 1);
   }
 
+  // Segue o ponteiro, mas sem deixar o tooltip cortar nas bordas da tela.
   function move(event) {
     const { clientX, clientY } = event;
     const rect = el.node().getBoundingClientRect();

@@ -31,3 +31,4 @@ Abre em `http://localhost:5173`.
 
 - [PLANO.md](PLANO.md): escopo, requisitos e parte técnica
 - [UI.md](UI.md): prompt da parte visual
+- [COMENTARIOS.md](COMENTARIOS.md): prompt do padrão de comentários do código
