@@ -1,34 +1,67 @@
-# Trabalho 02 · Sistema de Análise Visual de Dados
+# Órbita — uma história em lançamentos
 
-Visualização de Dados · Prof. Marcos Lage (UFF)
+Dashboard interativo de visual analytics sobre lançamentos espaciais orbitais,
+de 1957 até o snapshot de outubro de 2026. A interface explora a transição da
+corrida espacial para um ecossistema com vários países e operadores comerciais.
 
-**Integrantes:** Filype Abreu, Felipe Gomes e Lucas Paixão.
+## Como executar
 
-## A ideia
-
-Um dashboard interativo sobre **todos os lançamentos orbitais da história (1957–hoje)**: como a exploração espacial passou da disputa EUA × URSS para um cenário com China, Europa, Índia e empresas privadas como a SpaceX. Dá para explorar quem lança, de onde, com que taxa de sucesso e como isso mudou ao longo do tempo.
-
-Feito com **D3.js** + **DuckDB-Wasm**, rodando 100% no navegador.
-
-## Dados
-
-- Lançamentos, bases e operadores: [GCAT, de Jonathan McDowell](https://planet4589.org/space/gcat/)
-- Objetos lançados por país/ano: [Our World in Data](https://ourworldindata.org/grapher/yearly-number-of-objects-launched-into-outer-space)
-- Mapa-múndi: [world-atlas](https://github.com/topojson/world-atlas)
-
-Os arquivos já estão em `public/data/`.
-
-## Como rodar
+Requer Node.js 20.19+ ou 22.12+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abre em `http://localhost:5173`.
+Abra o endereço local exibido pelo Vite. Para validar ou publicar:
 
-## Documentos
+```bash
+npm run build
+npm run preview
+```
 
-- [PLANO.md](PLANO.md): escopo, requisitos e parte técnica
-- [UI.md](UI.md): prompt da parte visual
-- [COMENTARIOS.md](COMENTARIOS.md): prompt do padrão de comentários do código
+O dashboard e os arquivos de dados são servidos pelo Vite, mas o processamento
+é feito no navegador: D3.js desenha os gráficos e DuckDB-Wasm consulta/agrega os
+TSV/CSV localmente. Não há backend nem API em runtime.
+
+## Como explorar
+
+- Arraste sobre a linha do tempo para filtrar o período; todas as demais views
+  respondem ao intervalo.
+- Alterne entre **Quem lança** e **Que setor** para mudar a leitura da área
+  empilhada.
+- Selecione um ator na legenda ou no ranking para coordenar destaque, mapa e
+  painel de detalhe. Clique novamente para limpar a seleção.
+- Use **Filtrar setor** para restringir ranking, curva de aprendizado, mapa e
+  painel às categorias Comercial, Civil, Militar ou Indefinido. A seleção de um
+  ator dentro do setor continua disponível no ranking e no painel de detalhe.
+- Busque atores e ordene o ranking por volume ou taxa de sucesso.
+- Abra **Sobre os dados** para fontes, definições e limitações.
+
+## Estrutura
+
+```text
+src/
+├── data/                 # Carregamento, transformação e consultas DuckDB
+├── shared/
+│   ├── data/              # DuckDB-Wasm singleton
+│   └── styles/            # Tema e paleta categórica comum às views
+├── state/                 # Estado compartilhado de filtros e seleção
+├── views/                 # Gráficos D3 coordenados
+└── main.js                # Layout, interações globais e ciclo de atualização
+public/data/               # Snapshot GCAT, OWID e geometria do mapa
+docs/                      # Decisões visuais e notas sobre os dados
+```
+
+## Documentação
+
+- [Decisões de design](docs/DECISOES.md)
+- [Dados, preparação e limitações](docs/DADOS.md)
+- [Plano do trabalho de referência](../trab2_vis/PLANO.md)
+
+## Tecnologias e fontes
+
+- D3.js 7 e DuckDB-Wasm para visualização, consulta e agregação no cliente.
+- [GCAT — Jonathan McDowell](https://planet4589.org/space/gcat/)
+- [Our World in Data — objetos lançados ao espaço](https://ourworldindata.org/grapher/yearly-number-of-objects-launched-into-outer-space)
+- [world-atlas](https://github.com/topojson/world-atlas)

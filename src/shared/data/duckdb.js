@@ -1,30 +1,28 @@
-// Instância única global do DuckDB-WASM: compartilhada por todas as views do sistema.
-// Reaproveita UMA AsyncDuckDB + UMA conexão em vez de recriar a cada consulta ou view.
+// Mantemos uma instância e conexão únicas para todas as consultas do dashboard.
 import * as duckdb from "@duckdb/duckdb-wasm";
-
-// `?url` faz o Vite copiar wasm/worker para o build e devolver uma URL local
-// (bundles "self-hosted", sem depender de CDN em runtime).
 import duckdbWasmMvp from "@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url";
 import duckdbWorkerMvp from "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url";
 import duckdbWasmEh from "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url";
 import duckdbWorkerEh from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url";
 
-const MANUAL_BUNDLES = {
+const bundles = {
   mvp: { mainModule: duckdbWasmMvp, mainWorker: duckdbWorkerMvp },
   eh: { mainModule: duckdbWasmEh, mainWorker: duckdbWorkerEh },
 };
 
-let dbPromise = null;
-let connectionPromise = null;
+let dbPromise;
+let connectionPromise;
 const registeredFiles = new Set();
 
-export function getDb() {
+function getDb() {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
+      const bundle = await duckdb.selectBundle(bundles);
       const worker = new Worker(bundle.mainWorker);
-      const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING);
-      const db = new duckdb.AsyncDuckDB(logger, worker);
+      const db = new duckdb.AsyncDuckDB(
+        new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING),
+        worker,
+      );
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
       return db;
     })();
@@ -32,41 +30,33 @@ export function getDb() {
   return dbPromise;
 }
 
-export function getConnection() {
-  if (!connectionPromise) {
-    connectionPromise = getDb().then((db) => db.connect());
-  }
+function getConnection() {
+  if (!connectionPromise) connectionPromise = getDb().then((db) => db.connect());
   return connectionPromise;
 }
 
-// O resultado vem como tabela Arrow; toArray()+toJSON() converte cada
-// linha em objeto simples para o resto do código não lidar com Arrow.
-// Converte também BigInt para Number para evitar problemas de serialização.
+// Arrow é convertido em objetos simples; BigInt vira Number para facilitar
+// formatação e uso nas escalas do D3.
 export async function query(sql, params = []) {
-  const conn = await getConnection();
-  const result =
-    params.length > 0
-      ? await (await conn.prepare(sql)).query(...params)
-      : await conn.query(sql);
+  const connection = await getConnection();
+  const result = params.length
+    ? await (await connection.prepare(sql)).query(...params)
+    : await connection.query(sql);
+
   return result.toArray().map((row) => {
-    const obj = row.toJSON();
-    for (const k in obj) {
-      if (typeof obj[k] === "bigint") obj[k] = Number(obj[k]);
+    const value = row.toJSON();
+    for (const key in value) {
+      if (typeof value[key] === "bigint") value[key] = Number(value[key]);
     }
-    return obj;
+    return value;
   });
 }
 
-// Registra um arquivo no filesystem virtual do DuckDB-WASM para ser lido
-// via SQL com read_csv_auto(nome, ...). Idempotente por virtualName.
-export async function registerLocalFile(virtualName, url) {
-  if (registeredFiles.has(virtualName)) return;
+export async function registerLocalFile(name, url) {
+  if (registeredFiles.has(name)) return;
   const db = await getDb();
   const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Falha ao carregar ${url}: HTTP ${response.status}`);
-  }
-  const buffer = new Uint8Array(await response.arrayBuffer());
-  await db.registerFileBuffer(virtualName, buffer);
-  registeredFiles.add(virtualName);
+  if (!response.ok) throw new Error(`Falha ao carregar ${url}: HTTP ${response.status}`);
+  await db.registerFileBuffer(name, new Uint8Array(await response.arrayBuffer()));
+  registeredFiles.add(name);
 }

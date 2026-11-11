@@ -1,20 +1,8 @@
-import { registerLocalFile, query } from "../shared/data/duckdb.js";
+import { query, registerLocalFile } from "../shared/data/duckdb.js";
 
-// Todo o carregamento e a limpeza dos dados de lançamentos ficam aqui,
-// separados do código de desenho. As views só consultam as tabelas prontas.
-
-// Arquivos do GCAT (Jonathan McDowell) e do OWID, servidos estáticos de
-// public/data (sem backend, como exige o enunciado).
-const FILES = {
-  launch: "launch.tsv",
-  sites: "sites.tsv",
-  orgs: "orgs.tsv",
-  owid: "owid-space-objects.csv",
-};
-
-// Os TSVs do GCAT têm 2 linhas de cabeçalho (nomes com "#" e "# Updated ..."),
-// o que confunde a detecção automática do DuckDB. Por isso pulamos as duas e
-// passamos os nomes das colunas explicitamente.
+// As tabelas são carregadas uma vez; toda agregação usada pelas views fica no
+// DuckDB para deixar explícita a transformação dos dados que sustenta cada marca.
+const FILES = ["launch.tsv", "sites.tsv", "orgs.tsv", "owid-space-objects.csv"];
 const LAUNCH_COLS = [
   "Launch_Tag", "Launch_JD", "Launch_Date", "LV_Type", "Variant", "Fairing",
   "Flight_ID", "Flight", "Mission", "FlightCode", "Platform", "Launch_Site",
@@ -32,29 +20,18 @@ const ORG_COLS = [
   "Name", "Location", "Longitude", "Latitude", "Error", "Parent", "ShortEName",
   "EName", "UName",
 ];
+const readGcat = (file, columns) =>
+  `read_csv('${file}', delim='\\t', header=false, skip=2, all_varchar=true,
+    quote='', null_padding=true, names=[${columns.map((column) => `'${column}'`).join(", ")}])`;
 
-// Tudo é lido como texto (all_varchar) porque o GCAT usa "-" para vazio e
-// alinha números com espaços; a conversão de tipos é feita depois, com TRY_CAST.
-function readGcat(file, cols) {
-  const names = cols.map((c) => `'${c}'`).join(", ");
-  return `read_csv('${file}', delim='\\t', header=false, skip=2, all_varchar=true,
-    quote='', null_padding=true, names=[${names}])`;
-}
+let initPromise;
+let learningPromise;
 
-let initPromise = null;
-
-// Idempotente: os arquivos só são buscados e as tabelas só são criadas uma
-// vez, mesmo que várias views chamem esta função.
-// `launches` contém só lançamentos orbitais (LaunchCode começa com "O") e já
-// vem desnormalizada, com ator, setor, base e sucesso, para que as queries
-// das views sejam simples agregações.
 export function initLaunchData() {
   if (!initPromise) {
     initPromise = (async () => {
       const base = `${import.meta.env.BASE_URL}data/`;
-      await Promise.all(
-        Object.values(FILES).map((f) => registerLocalFile(f, base + f)),
-      );
+      await Promise.all(FILES.map((file) => registerLocalFile(file, base + file)));
 
       await query(`
         CREATE TABLE IF NOT EXISTS sites AS
@@ -62,38 +39,24 @@ export function initLaunchData() {
                trim(StateCode) AS site_state,
                TRY_CAST(trim(Latitude) AS DOUBLE) AS lat,
                TRY_CAST(trim(Longitude) AS DOUBLE) AS lon
-        FROM ${readGcat(FILES.sites, SITE_COLS)};
+        FROM ${readGcat("sites.tsv", SITE_COLS)};
       `);
-
       await query(`
         CREATE TABLE IF NOT EXISTS orgs AS
         SELECT trim(Code) AS org, trim(ShortName) AS org_name,
                trim(StateCode) AS org_state, trim(Class) AS org_class
-        FROM ${readGcat(FILES.orgs, ORG_COLS)};
+        FROM ${readGcat("orgs.tsv", ORG_COLS)};
       `);
 
-      // Launch_Date vem como "1957 Oct  4 1928:34"; o ano são os 4 primeiros
-      // caracteres. Para ordem cronológica usamos `jd` (data juliana), porque o
-      // texto não ordena corretamente dentro do ano ("Apr" < "Jan").
-      // Agency pode ter vários operadores ("SPOG/AVKO"); usamos o primeiro.
-      //
-      // Decisões de dados (justificativas no PLANO.md, seção 3):
-      // - Ator é o país do OPERADOR (quem lança), não o da base (de onde se
-      //   lança). A geografia continua visível no mapa das bases.
-      // - SU e RU viram uma linhagem só, "URSS/Rússia": mesmo programa, bases e
-      //   foguetes. Separar criaria uma queda artificial em 1991.
-      // - Países europeus, ESA e ELDO viram "Europa"; atores com pouco volume
-      //   viram "Outros", limitando a paleta categórica a 7 cores.
-      // - Setor vem da classe do operador no GCAT: B comercial, C civil, D militar.
-      // - Sucesso usa a "fração de sucesso" do McDowell: OS = 1, OF = 0,
-      //   OS80 = 0,8, OF40 = 0,4 (sucesso parcial). OE (explosão na plataforma)
-      //   e OA (aborto) não chegaram a voar, então ficam fora da taxa (NULL).
+      // O país representa quem opera o lançamento; base e operador respondem
+      // perguntas diferentes e permanecem disponíveis em views separadas.
+      // URSS e Rússia são agrupadas como uma linhagem para evitar uma quebra
+      // artificial em 1991; sucesso parcial entra como fração e não como 0/1.
       await query(`
         CREATE TABLE IF NOT EXISTS launches AS
         WITH raw AS (
           SELECT trim(Launch_Tag) AS tag,
                  CAST(substr(trim(Launch_Date), 1, 4) AS INTEGER) AS year,
-                 trim(Launch_Date) AS date_raw,
                  TRY_CAST(trim(Launch_JD) AS DOUBLE) AS jd,
                  trim(LV_Type) AS vehicle,
                  trim(Launch_Site) AS site,
@@ -101,10 +64,10 @@ export function initLaunchData() {
                  trim(LaunchCode) AS launch_code,
                  substr(trim(LaunchCode), 2, 1) AS result_letter,
                  TRY_CAST(substr(trim(LaunchCode), 3) AS INTEGER) AS result_pct
-          FROM ${readGcat(FILES.launch, LAUNCH_COLS)}
+          FROM ${readGcat("launch.tsv", LAUNCH_COLS)}
           WHERE trim(LaunchCode) LIKE 'O%'
         )
-        SELECT r.tag, r.year, r.date_raw, r.jd, r.vehicle, r.launch_code,
+        SELECT r.tag, r.year, r.jd, r.vehicle, r.launch_code,
                r.org, o.org_name, o.org_state,
                CASE
                  WHEN o.org_state = 'US' THEN 'EUA'
@@ -140,12 +103,11 @@ export function initLaunchData() {
         LEFT JOIN orgs o ON o.org = r.org
         LEFT JOIN sites s ON s.site = r.site;
       `);
-
       await query(`
         CREATE TABLE IF NOT EXISTS owid_objects AS
         SELECT Entity AS entity, Code AS iso3, Year AS year,
                "Annual number of objects launched into outer space" AS objects
-        FROM read_csv_auto('${FILES.owid}');
+        FROM read_csv_auto('owid-space-objects.csv');
       `);
     })();
   }
@@ -154,10 +116,120 @@ export function initLaunchData() {
 
 export async function getSummary() {
   await initLaunchData();
-  const [row] = await query(`
+  const [summary] = await query(`
     SELECT count(*) AS total, min(year) AS first_year, max(year) AS last_year,
            avg(success_fraction) AS success_rate
     FROM launches;
   `);
-  return row;
+  return summary;
+}
+
+export async function getTimeline(colorBy, sector) {
+  await initLaunchData();
+  const dimension = colorBy === "sector" ? "sector" : "actor";
+  return query(`
+    SELECT year, ${dimension} AS category, count(*) AS launches
+    FROM launches
+    WHERE (? IS NULL OR ? = 'sector' OR sector = ?)
+    GROUP BY year, ${dimension}
+    ORDER BY year, ${dimension};
+  `, [sector, dimension, sector]);
+}
+
+export async function getRanking([start, end], sector) {
+  await initLaunchData();
+  return query(`
+    SELECT actor, count(*) AS launches,
+           avg(success_fraction) AS success_rate
+    FROM launches
+    WHERE year BETWEEN ? AND ? AND (? IS NULL OR sector = ?)
+    GROUP BY actor
+    ORDER BY launches DESC;
+  `, [start, end, sector, sector]);
+}
+
+const learningPromises = new Map();
+export function getLearningCurve() {
+  return getLearningCurveForSector(null);
+}
+
+export function getLearningCurveForSector(sector) {
+  if (!learningPromises.has(sector)) {
+    learningPromises.set(sector, (async () => {
+      await initLaunchData();
+      // A janela segue a data juliana, que ordena corretamente os lançamentos
+      // dentro do ano; AVG ignora resultados sem taxa definida (abortos).
+      // O filtro de setor é aplicado antes da janela para medir a experiência
+      // específica daquele setor e não uma trajetória de todos os lançamentos.
+      return query(`
+        SELECT actor, jd,
+               row_number() OVER w AS launches_so_far,
+               avg(success_fraction) OVER w AS success_rate_so_far
+        FROM launches
+        WHERE success_fraction IS NOT NULL AND jd IS NOT NULL
+          AND (? IS NULL OR sector = ?)
+        WINDOW w AS (
+          PARTITION BY actor ORDER BY jd
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        )
+        ORDER BY actor, jd;
+      `, [sector, sector]);
+    })());
+  }
+  return learningPromises.get(sector);
+}
+
+export async function getSites([start, end], actor, sector) {
+  await initLaunchData();
+  return query(`
+    SELECT site_name, site_state, lat, lon, count(*) AS launches
+    FROM launches
+    WHERE year BETWEEN ? AND ? AND lat BETWEEN -90 AND 90
+      AND lon BETWEEN -180 AND 180
+      AND (? IS NULL OR actor = ?)
+      AND (? IS NULL OR sector = ?)
+    GROUP BY site_name, site_state, lat, lon
+    ORDER BY launches DESC;
+  `, [start, end, actor, actor, sector, sector]);
+}
+
+export async function getActorDetail([start, end], actor, sector) {
+  await initLaunchData();
+  if (!actor) return [];
+  return query(`
+    SELECT year, count(*) AS launches, avg(success_fraction) AS success_rate
+    FROM launches
+    WHERE year BETWEEN ? AND ? AND actor = ?
+      AND (? IS NULL OR sector = ?)
+    GROUP BY year
+    ORDER BY year;
+  `, [start, end, actor, sector, sector]);
+}
+
+export async function getActorOrigins([start, end], actor, sector) {
+  await initLaunchData();
+  if (!actor) return [];
+  return query(`
+    SELECT org_state, org_name, count(*) AS launches
+    FROM launches
+    WHERE year BETWEEN ? AND ? AND actor = ? AND org_state IS NOT NULL
+      AND (? IS NULL OR sector = ?)
+    GROUP BY org_state, org_name
+    ORDER BY launches DESC
+    LIMIT 5;
+  `, [start, end, actor, sector, sector]);
+}
+
+export async function getSectorDetail([start, end], sector) {
+  await initLaunchData();
+  if (!sector) return [];
+  return query(`
+    SELECT year, count(*) AS launches,
+           sum(success_fraction) AS success_total,
+           count(success_fraction) AS success_count
+    FROM launches
+    WHERE year BETWEEN ? AND ? AND sector = ?
+    GROUP BY year
+    ORDER BY year;
+  `, [start, end, sector]);
 }

@@ -1,7 +1,7 @@
 {
-  "name": "trab2_vis",
+  "name": "vis-copilot",
   "version": "1.0.0",
-  "description": "Trabalho 02 - Sistema de Análise Visual de Dados",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
