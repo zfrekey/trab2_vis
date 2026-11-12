@@ -2,20 +2,19 @@ import "./shared/styles/style.css";
 import {
   getActorDetail,
   getActorOrigins,
-  getLearningCurveForSector,
+  getOutcomeComposition,
   getRanking,
   getSites,
-  getSectorDetail,
   getSummary,
   getTimeline,
 } from "./data/launchesRepository.js";
 import { getState, setState, subscribe } from "./state/store.js";
 import {
-  drawDetail,
-  drawLearning,
+  drawDetailChart,
+  drawFocusSummary,
   drawMap,
+  drawOutcomeComposition,
   drawRanking,
-  drawSectorDetail,
   drawTimeline,
 } from "./views/charts.js";
 
@@ -36,19 +35,12 @@ app.innerHTML = `
   <main>
     <div class="status-bar" aria-live="polite">
       <span id="filter-summary">Carregando os dados históricos…</span>
-      <div class="status-controls">
-        <div class="color-switch" role="group" aria-label="Colorir linha do tempo por">
-          <button type="button" data-color-by="actor" aria-pressed="true">Quem lança</button>
-          <button type="button" data-color-by="sector" aria-pressed="false">Que setor</button>
-        </div>
-        <button class="button" id="clear-filters" type="button" hidden>Limpar filtros</button>
-      </div>
     </div>
     <section class="dashboard-grid" aria-label="Painel interativo de lançamentos orbitais">
       <article class="card card-timeline">
         <div class="card-heading">
           <div>
-            <p class="eyebrow">01 · Panorama histórico</p>
+            <p class="eyebrow">Panorama histórico</p>
             <h2>O ritmo de lançamento muda com o tempo</h2>
             <p class="card-description">Quem puxou cada era — e quando o volume de lançamentos acelerou?</p>
           </div>
@@ -59,26 +51,38 @@ app.innerHTML = `
       </article>
       <article class="card card-detail">
         <p class="eyebrow">Leitura em foco</p>
-        <h2>Um ator, em detalhe</h2>
-        <div id="detail-panel" class="chart"><div class="detail-empty">Selecione um ator para começar.</div></div>
+        <h2>Ator e setor, em detalhe</h2>
+        <div class="detail-focus-columns">
+          <section class="detail-focus" id="actor-focus" aria-label="Ator em foco"></section>
+          <section class="detail-focus" id="sector-focus" aria-label="Setor em foco"></section>
+        </div>
+        <p class="detail-period" id="detail-period"></p>
+        <div class="detail-chart" id="actor-detail-chart">
+          <div class="detail-empty">Selecione um ator para ver o ritmo anual.</div>
+        </div>
+        <p class="chart-note detail-chart-note" id="actor-detail-note" hidden>Cada ponto representa um ano com lançamentos.</p>
+        <div class="origin-list" id="actor-origins"></div>
       </article>
-      <article class="card card-learning">
-        <p class="eyebrow">02 · Experiência e confiabilidade</p>
-        <h2>Aprender a lançar, ao longo do tempo</h2>
-        <p class="card-description">A taxa acumulada muda conforme cresce a experiência de cada programa?</p>
-        <div class="chart" id="learning-chart"><div class="loading-state">Consultando histórico de confiabilidade…</div></div>
-        <div class="learning-legend" aria-label="Cores dos atores"></div>
-        <p class="chart-note">Eixo X logarítmico: a escala preserva os atores com menos lançamentos.</p>
+      <article class="card card-outcomes">
+        <p class="eyebrow">Resultados por ano</p>
+        <h2>Como os resultados dos lançamentos mudaram?</h2>
+        <p class="card-description">Os lançamentos são agrupados em blocos de três anos. O painel superior mostra a taxa de sucesso; o inferior amplia a composição dos demais resultados.</p>
+        <div class="chart" id="outcomes-chart"><div class="loading-state">Consultando os resultados por ano…</div></div>
+        <div class="outcome-legend" aria-label="Categorias de resultado"></div>
+        <p class="chart-note">O painel inferior compara os resultados diferentes de sucesso entre si (inclui parciais). Passe o cursor para ver contagens e percentuais no total e entre os demais resultados.</p>
       </article>
       <article class="card card-ranking">
-        <p class="eyebrow">03 · Comparação</p>
+        <div class="ranking-pinned-controls">
+          <div class="color-switch" role="group" aria-label="Colorir linha do tempo por">
+            <button type="button" data-color-by="actor" aria-pressed="true">Quem lança</button>
+            <button type="button" data-color-by="sector" aria-pressed="false">Que setor</button>
+          </div>
+          <button class="button" id="clear-filters" type="button">Limpar filtros</button>
+        </div>
+        <p class="eyebrow">Comparação</p>
         <h2>Quem lançou mais?</h2>
-        <p class="card-description">Compare volume e taxa média no intervalo selecionado.</p>
+        <p class="card-description">Compare volume e taxa média no intervalo selecionado. Clique em um ator da lista para selecioná-lo.</p>
         <div class="ranking-tools">
-          <label class="search-control">
-            <span class="eyebrow">Buscar ator</span>
-            <input id="actor-search" type="search" placeholder="Ex.: China" autocomplete="off" />
-          </label>
           <label class="sector-control">
             <span class="eyebrow">Filtrar setor</span>
             <select id="sector-filter">
@@ -102,7 +106,7 @@ app.innerHTML = `
       <article class="card card-map">
         <div class="card-heading">
           <div>
-            <p class="eyebrow">04 · Geografia</p>
+            <p class="eyebrow">Geografia</p>
             <h2>De onde partem os lançamentos?</h2>
             <p class="card-description map-context">O tamanho dos círculos representa o volume de lançamentos por base.</p>
           </div>
@@ -120,7 +124,7 @@ app.innerHTML = `
       </div>
       <button class="button" id="about-close" type="button" aria-label="Fechar">Fechar</button>
     </div>
-    <p>Este painel investiga como a exploração espacial passou da disputa entre EUA e URSS para um cenário com novos países e operadores comerciais. Use o brush da linha do tempo para selecionar anos, a busca e o ranking para encontrar atores, o filtro de setor para restringir a exploração e os botões de cor para alternar entre quem lança e que setor lança.</p>
+    <p>Este painel investiga como a exploração espacial passou da disputa entre EUA e URSS para um cenário com novos países e operadores comerciais. Use o brush da linha do tempo para selecionar anos, o ranking para selecionar atores, o filtro de setor para restringir a exploração e os botões de cor para alternar entre quem lança e que setor lança.</p>
     <h3>Fontes</h3>
     <ul>
       <li><a href="https://planet4589.org/space/gcat/" target="_blank" rel="noreferrer">GCAT — Jonathan McDowell</a>: lançamentos, operadores e bases. Snapshot de 17/10/2026.</li>
@@ -128,7 +132,7 @@ app.innerHTML = `
       <li><a href="https://github.com/topojson/world-atlas" target="_blank" rel="noreferrer">world-atlas</a>: geometria geográfica.</li>
     </ul>
     <h3>Como interpretar</h3>
-    <p>Atores são agrupados pelo país do operador; URSS e Rússia formam uma linhagem, e países europeus são agregados em “Europa”. O gráfico de aprendizado usa a taxa acumulada de sucesso parcial inclusive, em ordem cronológica, e exclui resultados sem taxa definida. No GCAT, sucesso é propulsivo: indica que o foguete chegou à órbita, não necessariamente que a carga cumpriu sua missão.</p>
+    <p>Atores são agrupados pelo país do operador; URSS e Rússia formam uma linhagem, e países europeus são agregados em “Europa”. O gráfico de resultados apresenta a composição percentual das categorias registradas pelo GCAT em cada ano e segue os filtros de período, ator e setor. No GCAT, sucesso é propulsivo: indica que o foguete chegou à órbita, não necessariamente que a carga cumpriu sua missão.</p>
     <h3>Limitações</h3>
     <p>O GCAT é mantido por uma pessoa e suas classificações podem mudar. “País” pode significar operador, base ou cliente; aqui usamos o operador nos gráficos e mostramos a localização física no mapa. A categoria comercial segue a classificação do GCAT e pode incluir empresas estatais. O OWID conta objetos, não lançamentos — uma missão pode colocar muitos satélites em órbita.</p>
   </dialog>
@@ -136,10 +140,15 @@ app.innerHTML = `
 
 const elements = {
   timeline: document.querySelector("#timeline-chart"),
-  learning: document.querySelector("#learning-chart"),
+  outcomes: document.querySelector("#outcomes-chart"),
   ranking: document.querySelector("#ranking-list"),
   map: document.querySelector("#map-chart"),
-  detail: document.querySelector("#detail-panel"),
+  actorFocus: document.querySelector("#actor-focus"),
+  sectorFocus: document.querySelector("#sector-focus"),
+  detailPeriod: document.querySelector("#detail-period"),
+  detailChart: document.querySelector("#actor-detail-chart"),
+  detailNote: document.querySelector("#actor-detail-note"),
+  origins: document.querySelector("#actor-origins"),
   status: document.querySelector("#filter-summary"),
   clear: document.querySelector("#clear-filters"),
   dialog: document.querySelector("#about-dialog"),
@@ -149,10 +158,6 @@ let currentData;
 let refreshId = 0;
 
 function updateFilterStatus(state) {
-  const active = state.years[0] !== 1957
-    || state.years[1] !== 2026
-    || state.actor
-    || state.sector;
   const parts = [`${state.years[0]}–${state.years[1]}`];
   if (state.sector) parts.push(`setor ${state.sector}`);
   if (state.actor) parts.push(`${state.actor} selecionado`);
@@ -160,7 +165,6 @@ function updateFilterStatus(state) {
   const strong = document.createElement("strong");
   strong.textContent = parts.join(" · ");
   elements.status.append(strong);
-  elements.clear.hidden = !active;
   document.querySelector("#sector-filter").value = state.sector || "";
   for (const button of document.querySelectorAll("[data-color-by]")) {
     button.setAttribute("aria-pressed", String(button.dataset.colorBy === state.colorBy));
@@ -169,9 +173,6 @@ function updateFilterStatus(state) {
 
 function redraw(state) {
   if (!currentData || !world) return;
-  document.querySelector(".card-detail h2").textContent = state.sector && !state.actor
-    ? "Um setor, em detalhe"
-    : "Um ator, em detalhe";
   drawTimeline(
     elements.timeline,
     currentData.timeline,
@@ -180,22 +181,21 @@ function redraw(state) {
     selectActor,
     selectSector,
   );
-  drawLearning(elements.learning, currentData.learning, state);
+  drawOutcomeComposition(elements.outcomes, currentData.outcomes, state);
   drawRanking(elements.ranking, currentData.ranking, state, selectActor);
   drawMap(elements.map, currentData.sites, world, state);
-  if (state.actor) {
-    drawDetail(elements.detail, currentData.detail, state.actor, currentData.ranking, currentData.origins);
-  } else if (state.sector) {
-    drawSectorDetail(
-      elements.detail,
-      currentData.sectorDetail,
-      state.sector,
-      currentData.ranking,
-      selectActor,
-    );
-  } else {
-    drawDetail(elements.detail, [], null, [], []);
-  }
+  drawFocusSummary(elements.actorFocus, "Ator em foco", state.actor, "Nenhum ator em foco.");
+  drawFocusSummary(elements.sectorFocus, "Setor em foco", state.sector, "Nenhum setor selecionado.");
+  elements.detailPeriod.textContent = `Intervalo selecionado: ${state.years[0]}–${state.years[1]}`;
+  drawDetailChart(
+    elements.detailChart,
+    elements.detailNote,
+    elements.origins,
+    currentData.detail,
+    state.actor,
+    currentData.origins,
+    state.years,
+  );
   updateFilterStatus(state);
 }
 
@@ -205,29 +205,38 @@ function selectActor(actor) {
 
 function selectSector(sector) {
   const selected = getState().sector === sector ? null : sector;
-  setState({ sector: selected, actor: null });
+  setState({ sector: selected, colorBy: "sector" });
 }
 
 async function refresh(state) {
   const id = ++refreshId;
   updateFilterStatus(state);
   try {
-    const [timeline, ranking, learning, sites, detail, origins, sectorDetail] = await Promise.all([
+    const [timeline, ranking, outcomes, sites, detail, origins] = await Promise.all([
       getTimeline(state.colorBy, state.sector),
       getRanking(state.years, state.sector),
-      getLearningCurveForSector(state.sector),
+      getOutcomeComposition(state.years, state.actor, state.sector),
       getSites(state.years, state.actor, state.sector),
       getActorDetail(state.years, state.actor, state.sector),
       getActorOrigins(state.years, state.actor, state.sector),
-      getSectorDetail(state.years, state.sector),
     ]);
     if (id !== refreshId) return;
-    currentData = { timeline, ranking, learning, sites, detail, origins, sectorDetail };
+    currentData = { timeline, ranking, outcomes, sites, detail, origins };
     redraw(state);
   } catch (error) {
     if (id !== refreshId) return;
     console.error(error);
-    for (const element of Object.values(elements).slice(0, 5)) {
+    for (const element of [
+      elements.timeline,
+      elements.outcomes,
+      elements.ranking,
+      elements.map,
+      elements.actorFocus,
+      elements.sectorFocus,
+      elements.detailPeriod,
+      elements.detailChart,
+      elements.origins,
+    ]) {
       const message = document.createElement("div");
       message.className = "error-state";
       message.textContent = `Não foi possível carregar esta visualização: ${error.message}`;
@@ -244,15 +253,12 @@ elements.clear.addEventListener("click", () =>
   setState({ years: [1957, 2026], actor: null, sector: null }),
 );
 document.querySelector("#sector-filter").addEventListener("change", (event) => {
-  setState({ sector: event.target.value || null, actor: null });
+  setState({ sector: event.target.value || null, colorBy: "sector" });
 });
 document.querySelector("#about-open").addEventListener("click", () => elements.dialog.showModal());
 document.querySelector("#about-close").addEventListener("click", () => elements.dialog.close());
 elements.dialog.addEventListener("click", (event) => {
   if (event.target === elements.dialog) elements.dialog.close();
-});
-document.querySelector("#actor-search").addEventListener("input", (event) => {
-  if (currentData) drawRanking(elements.ranking, currentData.ranking, getState(), selectActor);
 });
 document.querySelector("#ranking-sort").addEventListener("change", (event) => {
   if (currentData) drawRanking(elements.ranking, currentData.ranking, getState(), selectActor);

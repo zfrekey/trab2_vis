@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Mockups ilustrativos de três alternativas para visualizar os dados de lançamentos orbitais."
+    />
+    <title>Mockups de gráficos — Órbita</title>
+    <style>
+      :root {
+        --bg: #faf8f3;
+        --surface: #fff;
+        --border: #e2e0da;
+        --text: #1c2433;
+        --muted: #5d6676;
+        --accent: #1d3557;
+        --green: #2f855a;
+        --orange: #d78a28;
+        --red: #bd4d4d;
+        --purple: #8662a6;
+        --teal: #378e91;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      header {
+        padding: 32px max(24px, calc((100vw - 1200px) / 2));
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+      }
+      h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+      h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; }
+      header p:last-child { max-width: 760px; margin: 12px 0 0; color: var(--muted); }
+      main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+      .notice {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border: 1px solid #e8d8ae;
+        border-radius: 6px;
+        background: #fffaf0;
+        color: #665534;
+        font-size: 12px;
+      }
+      .notice strong { color: #59451d; }
+      .mockup-list { display: grid; gap: 18px; }
+      article {
+        min-width: 0;
+        padding: 22px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--surface);
+      }
+      .card-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+      }
+      h2 { margin: 0; font-size: 24px; line-height: 1.2; }
+      .description { max-width: 760px; margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+      .tag {
+        flex: 0 0 auto;
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+      .filters { display: flex; flex-wrap: wrap; gap: 7px; margin: 17px 0 4px; }
+      .filter {
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .chart { width: 100%; margin-top: 12px; }
+      svg { display: block; width: 100%; height: auto; overflow: visible; }
+      .grid { stroke: var(--border); stroke-dasharray: 2 4; }
+      .axis { stroke: #bcbab3; }
+      .tick { fill: var(--muted); font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .axis-title { fill: var(--muted); font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0 0; }
+      .legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; }
+      .swatch { width: 9px; height: 9px; border-radius: 2px; }
+      .line-swatch { width: 15px; height: 2px; }
+      .note { margin: 12px 0 0; color: var(--muted); font-size: 11px; }
+      .takeaway {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        color: var(--text);
+        font-size: 11px;
+      }
+      .takeaway strong { color: var(--accent); }
+      .point-label { fill: var(--muted); font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+      @media (max-width: 640px) {
+        main { padding: 14px 12px; }
+        header { padding: 24px 16px; }
+        article { padding: 16px 12px; }
+        .card-heading { display: block; }
+        .tag { display: inline-block; margin-top: 10px; }
+        h2 { font-size: 21px; }
+        .tick { font-size: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">Órbita · estudo de alternativas</p>
+      <h1>Três ideias para visualizar os lançamentos</h1>
+      <p>Mockups dos gráficos 3, 4 e 5 para comparar o que cada desenho comunica antes de escolher uma alternativa para o dashboard.</p>
+    </header>
+    <main>
+      <div class="notice">
+        <span aria-hidden="true">ⓘ</span>
+        <div><strong>Dados demonstrativos.</strong> Valores e rótulos desta página são fictícios e servem apenas para ilustrar o desenho dos gráficos. Não representam resultados do GCAT.</div>
+      </div>
+
+      <div class="mockup-list">
+        <article>
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Alternativa 03</p>
+              <h2>Como os resultados dos lançamentos mudaram?</h2>
+              <p class="description">Barras empilhadas em 100% mostram a composição dos resultados em cada ano, sem deixar que os anos com mais lançamentos dominem a comparação.</p>
+            </div>
+            <span class="tag">Composição percentual · por ano</span>
+          </div>
+          <div class="filters"><span class="filter">Ator: Todos</span><span class="filter">Setor: Todos</span><span class="filter">Período: completo</span></div>
+          <div class="chart">
+            <svg viewBox="0 0 760 286" role="img" aria-label="Mockup de barras empilhadas em 100 por cento para seis categorias de resultado ao longo dos anos">
+              <g>
+                <line class="grid" x1="62" y1="34" x2="735" y2="34" />
+                <line class="grid" x1="62" y1="79" x2="735" y2="79" />
+                <line class="grid" x1="62" y1="124" x2="735" y2="124" />
+                <line class="grid" x1="62" y1="169" x2="735" y2="169" />
+                <line class="grid" x1="62" y1="214" x2="735" y2="214" />
+                <line class="axis" x1="62" y1="34" x2="62" y2="214" />
+                <line class="axis" x1="62" y1="214" x2="735" y2="214" />
+                <text class="tick" x="52" y="218" text-anchor="end">0%</text>
+                <text class="tick" x="52" y="173" text-anchor="end">25%</text>
+                <text class="tick" x="52" y="128" text-anchor="end">50%</text>
+                <text class="tick" x="52" y="83" text-anchor="end">75%</text>
+                <text class="tick" x="52" y="38" text-anchor="end">100%</text>
+                <text class="axis-title" transform="translate(16 124) rotate(-90)" text-anchor="middle">Participação nos resultados</text>
+              </g>
+              <g>
+                <g transform="translate(100 0)">
+                  <rect x="0" y="115" width="48" height="99" fill="#2f855a" /><rect x="0" y="106" width="48" height="9" fill="#d78a28" />
+                  <rect x="0" y="70" width="48" height="36" fill="#bd4d4d" /><rect x="0" y="52" width="48" height="18" fill="#df9a9a" />
+                  <rect x="0" y="43" width="48" height="9" fill="#8662a6" /><rect x="0" y="34" width="48" height="9" fill="#aeb4bd" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">1957</text>
+                </g>
+                <g transform="translate(192 0)">
+                  <rect x="0" y="97" width="48" height="117" fill="#2f855a" /><rect x="0" y="83" width="48" height="14" fill="#d78a28" />
+                  <rect x="0" y="56" width="48" height="27" fill="#bd4d4d" /><rect x="0" y="43" width="48" height="13" fill="#df9a9a" />
+                  <rect x="0" y="37" width="48" height="6" fill="#8662a6" /><rect x="0" y="34" width="48" height="3" fill="#aeb4bd" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">1970</text>
+                </g>
+                <g transform="translate(284 0)">
+                  <rect x="0" y="84" width="48" height="130" fill="#2f855a" /><rect x="0" y="71" width="48" height="13" fill="#d78a28" />
+                  <rect x="0" y="49" width="48" height="22" fill="#bd4d4d" /><rect x="0" y="38" width="48" height="11" fill="#df9a9a" />
+                  <rect x="0" y="34" width="48" height="4" fill="#8662a6" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">1985</text>
+                </g>
+                <g transform="translate(376 0)">
+                  <rect x="0" y="71" width="48" height="143" fill="#2f855a" /><rect x="0" y="60" width="48" height="11" fill="#d78a28" />
+                  <rect x="0" y="42" width="48" height="18" fill="#bd4d4d" /><rect x="0" y="34" width="48" height="8" fill="#df9a9a" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">2000</text>
+                </g>
+                <g transform="translate(468 0)">
+                  <rect x="0" y="57" width="48" height="157" fill="#2f855a" /><rect x="0" y="48" width="48" height="9" fill="#d78a28" />
+                  <rect x="0" y="35" width="48" height="13" fill="#bd4d4d" /><rect x="0" y="34" width="48" height="1" fill="#df9a9a" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">2010</text>
+                </g>
+                <g transform="translate(560 0)">
+                  <rect x="0" y="48" width="48" height="166" fill="#2f855a" /><rect x="0" y="41" width="48" height="7" fill="#d78a28" />
+                  <rect x="0" y="34" width="48" height="7" fill="#bd4d4d" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">2020</text>
+                </g>
+                <g transform="translate(652 0)">
+                  <rect x="0" y="43" width="48" height="171" fill="#2f855a" /><rect x="0" y="37" width="48" height="6" fill="#d78a28" />
+                  <rect x="0" y="34" width="48" height="3" fill="#bd4d4d" />
+                  <text class="tick" x="24" y="235" text-anchor="middle">2026</text>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <div class="legend" aria-label="Categorias de resultado">
+            <span class="legend-item"><i class="swatch" style="background:#2f855a"></i>Sucesso</span>
+            <span class="legend-item"><i class="swatch" style="background:#d78a28"></i>Parcial</span>
+            <span class="legend-item"><i class="swatch" style="background:#bd4d4d"></i>Falha</span>
+            <span class="legend-item"><i class="swatch" style="background:#df9a9a"></i>Aborto</span>
+            <span class="legend-item"><i class="swatch" style="background:#8662a6"></i>Explosão na plataforma</span>
+            <span class="legend-item"><i class="swatch" style="background:#aeb4bd"></i>Incerto</span>
+          </div>
+          <p class="note">Cada barra soma 100%. O filtro pode alternar entre contagem absoluta e percentual.</p>
+          <div class="takeaway"><strong>Boa para:</strong> comparar a composição dos resultados ao longo do tempo e entre setores.</div>
+        </article>
+
+        <article>
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Alternativa 04</p>
+              <h2>A confiabilidade melhora com a experiência?</h2>
+              <p class="description">Cada ponto resume os lançamentos que ocorreram dentro de uma faixa de experiência. Diferente da taxa acumulada, mede o sucesso naquela faixa.</p>
+            </div>
+            <span class="tag">Taxa dentro da faixa · não acumulada</span>
+          </div>
+          <div class="filters"><span class="filter">Ator: Todos</span><span class="filter">Setor: Todos</span><span class="filter">Resultado: sucessos / resultados classificáveis</span></div>
+          <div class="chart">
+            <svg viewBox="0 0 760 286" role="img" aria-label="Mockup de taxa de sucesso por faixa de experiência para três atores ilustrativos">
+              <g>
+                <line class="grid" x1="62" y1="42" x2="735" y2="42" />
+                <line class="grid" x1="62" y1="84" x2="735" y2="84" />
+                <line class="grid" x1="62" y1="126" x2="735" y2="126" />
+                <line class="grid" x1="62" y1="168" x2="735" y2="168" />
+                <line class="grid" x1="62" y1="210" x2="735" y2="210" />
+                <line class="axis" x1="62" y1="42" x2="62" y2="210" />
+                <line class="axis" x1="62" y1="210" x2="735" y2="210" />
+                <text class="tick" x="52" y="214" text-anchor="end">50%</text>
+                <text class="tick" x="52" y="172" text-anchor="end">60%</text>
+                <text class="tick" x="52" y="130" text-anchor="end">70%</text>
+                <text class="tick" x="52" y="88" text-anchor="end">80%</text>
+                <text class="tick" x="52" y="46" text-anchor="end">90%</text>
+                <text class="axis-title" transform="translate(16 126) rotate(-90)" text-anchor="middle">Sucesso na faixa</text>
+              </g>
+              <g class="tick" text-anchor="middle">
+                <text x="132" y="232">1–10</text><text x="270" y="232">11–50</text>
+                <text x="408" y="232">51–100</text><text x="546" y="232">101–500</text>
+                <text x="684" y="232">501+</text>
+              </g>
+              <g class="tick" text-anchor="middle" fill="#89909b">
+                <text x="132" y="249">n=10</text><text x="270" y="249">n=40</text>
+                <text x="408" y="249">n=50</text><text x="546" y="249">n=400</text>
+                <text x="684" y="249">n=500</text>
+              </g>
+              <polyline points="132,180 270,130 408,105 546,80 684,63" fill="none" stroke="#1d3557" stroke-width="2.5" />
+              <polyline points="132,201 270,155 408,126 546,97 684,76" fill="none" stroke="#d78a28" stroke-width="2.5" />
+              <polyline points="132,168 270,143 408,113 546,88 684,71" fill="none" stroke="#2f855a" stroke-width="2.5" />
+              <g fill="#1d3557"><circle cx="132" cy="180" r="4" /><circle cx="270" cy="130" r="4" /><circle cx="408" cy="105" r="4" /><circle cx="546" cy="80" r="4" /><circle cx="684" cy="63" r="4" /></g>
+              <g fill="#d78a28"><circle cx="132" cy="201" r="4" /><circle cx="270" cy="155" r="4" /><circle cx="408" cy="126" r="4" /><circle cx="546" cy="97" r="4" /><circle cx="684" cy="76" r="4" /></g>
+              <g fill="#2f855a"><circle cx="132" cy="168" r="4" /><circle cx="270" cy="143" r="4" /><circle cx="408" cy="113" r="4" /><circle cx="546" cy="88" r="4" /><circle cx="684" cy="71" r="4" /></g>
+              <text class="axis-title" x="398" y="275" text-anchor="middle">Lançamentos já realizados pelo ator antes do bloco</text>
+            </svg>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><i class="line-swatch" style="background:#1d3557"></i>Ator A</span>
+            <span class="legend-item"><i class="line-swatch" style="background:#d78a28"></i>Ator B</span>
+            <span class="legend-item"><i class="line-swatch" style="background:#2f855a"></i>Ator C</span>
+          </div>
+          <p class="note">n indica a quantidade de lançamentos na faixa. Faixas iniciais têm amostras menores e, portanto, mais incerteza.</p>
+          <div class="takeaway"><strong>Boa para:</strong> comparar desempenho em etapas de experiência sem misturar cada etapa com o histórico anterior.</div>
+        </article>
+
+        <article>
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Alternativa 05</p>
+              <h2>Volume e sucesso por tipo de veículo</h2>
+              <p class="description">Um ponto representa um veículo. A posição combina quantidade de lançamentos e taxa de sucesso; pontos com pouco histórico podem ser destacados como estimativas incertas.</p>
+            </div>
+            <span class="tag">Um ponto = um tipo de veículo</span>
+          </div>
+          <div class="filters"><span class="filter">Ator: Todos</span><span class="filter">Setor: Todos</span><span class="filter">Mínimo de lançamentos: 20</span></div>
+          <div class="chart">
+            <svg viewBox="0 0 760 286" role="img" aria-label="Mockup de dispersão entre número de lançamentos e taxa de sucesso por veículo">
+              <g>
+                <line class="grid" x1="70" y1="42" x2="730" y2="42" />
+                <line class="grid" x1="70" y1="84" x2="730" y2="84" />
+                <line class="grid" x1="70" y1="126" x2="730" y2="126" />
+                <line class="grid" x1="70" y1="168" x2="730" y2="168" />
+                <line class="grid" x1="70" y1="210" x2="730" y2="210" />
+                <line class="axis" x1="70" y1="42" x2="70" y2="210" />
+                <line class="axis" x1="70" y1="210" x2="730" y2="210" />
+                <text class="tick" x="60" y="214" text-anchor="end">50%</text>
+                <text class="tick" x="60" y="172" text-anchor="end">60%</text>
+                <text class="tick" x="60" y="130" text-anchor="end">70%</text>
+                <text class="tick" x="60" y="88" text-anchor="end">80%</text>
+                <text class="tick" x="60" y="46" text-anchor="end">90%</text>
+                <text class="axis-title" transform="translate(17 126) rotate(-90)" text-anchor="middle">Taxa de sucesso</text>
+                <text class="tick" x="70" y="232" text-anchor="middle">1</text>
+                <text class="tick" x="290" y="232" text-anchor="middle">10</text>
+                <text class="tick" x="510" y="232" text-anchor="middle">100</text>
+                <text class="tick" x="730" y="232" text-anchor="middle">1.000</text>
+                <text class="axis-title" x="400" y="270" text-anchor="middle">Lançamentos (escala logarítmica)</text>
+              </g>
+              <g>
+                <circle cx="218" cy="181" r="6" fill="#8662a6" /><text class="point-label" x="226" y="178">Veículo A</text>
+                <circle cx="334" cy="147" r="6" fill="#378e91" /><text class="point-label" x="342" y="144">Veículo B</text>
+                <circle cx="432" cy="119" r="6" fill="#d78a28" /><text class="point-label" x="440" y="116">Veículo C</text>
+                <circle cx="510" cy="91" r="6" fill="#1d3557" /><text class="point-label" x="518" y="88">Veículo D</text>
+                <circle cx="584" cy="72" r="6" fill="#2f855a" /><text class="point-label" x="592" y="69">Veículo E</text>
+                <circle cx="644" cy="54" r="6" fill="#bd4d4d" /><text class="point-label" x="652" y="51">Veículo F</text>
+                <circle cx="704" cy="103" r="6" fill="#378e91" /><text class="point-label" x="696" y="120" text-anchor="end">Veículo G</text>
+              </g>
+            </svg>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><i class="swatch" style="background:#1d3557"></i>Cor identifica o ator</span>
+            <span class="legend-item"><i class="swatch" style="background:#aeb4bd"></i>Menos de 20 lançamentos: esmaecido</span>
+          </div>
+          <p class="note">A escala logarítmica permite comparar veículos com volumes muito diferentes. Um limite mínimo evita interpretações fortes a partir de poucas observações.</p>
+          <div class="takeaway"><strong>Boa para:</strong> comparar famílias de foguetes; requer carregar e harmonizar o campo de veículo e suas variantes.</div>
+        </article>
+      </div>
+    </main>
+  </body>
+</html>

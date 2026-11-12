@@ -30,12 +30,15 @@ TSV/CSV localmente. Não há backend nem API em runtime.
   respondem ao intervalo.
 - Alterne entre **Quem lança** e **Que setor** para mudar a leitura da área
   empilhada.
-- Selecione um ator na legenda ou no ranking para coordenar destaque, mapa e
-  painel de detalhe. Clique novamente para limpar a seleção.
-- Use **Filtrar setor** para restringir ranking, curva de aprendizado, mapa e
-  painel às categorias Comercial, Civil, Militar ou Indefinido. A seleção de um
-  ator dentro do setor continua disponível no ranking e no painel de detalhe.
-- Busque atores e ordene o ranking por volume ou taxa de sucesso.
+- Selecione um ator na legenda ou clique em seu nome no ranking para coordenar
+  destaque, mapa e painel de detalhe. Clique novamente para limpar a seleção.
+- Use **Filtrar setor** para restringir ranking, composição de resultados, mapa
+  e painel às categorias Comercial, Civil, Militar ou Indefinido. O gráfico de
+  resultados também acompanha os filtros de ator e setor e mostra a composição
+  percentual em blocos de três anos. A seleção de um ator dentro do setor
+  continua disponível no ranking e no painel de detalhe.
+- Todos os atores aparecem no ranking e podem ser selecionados com um clique.
+  Ordene a lista por volume ou taxa de sucesso.
 - Abra **Sobre os dados** para fontes, definições e limitações.
 
 ## Estrutura

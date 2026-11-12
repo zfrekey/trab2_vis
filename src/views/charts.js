@@ -6,6 +6,9 @@ import {
   ACTOR_ORDER,
   COLORS,
   FADED_OPACITY,
+  OUTCOME_COLORS,
+  OUTCOME_LABELS,
+  OUTCOME_ORDER,
   SECTOR_COLORS,
   SECTOR_ORDER,
 } from "../shared/styles/palette.js";
@@ -190,19 +193,15 @@ export function drawTimeline(element, rows, state, onBrush, onActor, onSector) {
 }
 
 export function drawRanking(element, rows, state, onActor) {
-  const search = element.closest(".card").querySelector("#actor-search").value
-    .trim().toLocaleLowerCase("pt-BR");
   const sortBy = element.closest(".card").querySelector("#ranking-sort").value;
-  const filtered = rows
-    .filter((row) => row.actor.toLocaleLowerCase("pt-BR").includes(search))
-    .sort((a, b) => sortBy === "success"
+  const filtered = [...rows].sort((a, b) => sortBy === "success"
       ? Number(b.success_rate ?? -1) - Number(a.success_rate ?? -1)
       : Number(b.launches) - Number(a.launches));
   const max = d3.max(filtered, (row) => Number(row.launches)) || 1;
   const list = d3.select(element).html("");
 
   if (!filtered.length) {
-    list.append("p").attr("class", "empty-state").text("Nenhum ator encontrado.");
+    list.append("p").attr("class", "empty-state").text("Nenhum ator para os filtros selecionados.");
     return;
   }
   list.selectAll("button").data(filtered, (row) => row.actor).join("button")
@@ -225,60 +224,146 @@ export function drawRanking(element, rows, state, onActor) {
     });
 }
 
-export function drawLearning(element, rows, state) {
-  const { width, height } = chartSize(element, 245);
-  const margin = { top: 18, right: 12, bottom: 36, left: 48 };
+export function drawOutcomeComposition(element, rows, state) {
+  const { width, height } = chartSize(element, 400);
+  const margin = { top: 22, right: 12, bottom: 38, left: 54 };
   const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-  const grouped = d3.group(rows, (row) => row.actor);
-  const maxExperience = d3.max(rows, (row) => Number(row.launches_so_far)) || 10;
-  const xMaximum = Math.max(10, maxExperience);
-  const maxExponent = Math.floor(Math.log10(xMaximum));
-  const xTicks = d3.range(0, maxExponent + 1).map((exponent) => 10 ** exponent);
-  const x = d3.scaleLog().domain([1, xMaximum]).range([0, innerWidth]);
-  const y = d3.scaleLinear().domain([0, 1]).range([innerHeight, 0]);
-  const svg = svgRoot(element, width, height,
-    "Curva de aprendizado: quantidade acumulada de lançamentos em escala logarítmica versus taxa de sucesso acumulada.");
-  const plot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-  plot.append("defs").append("clipPath").attr("id", "learning-plot-clip")
-    .append("rect").attr("width", innerWidth).attr("height", innerHeight);
-  plot.append("g").attr("class", "grid-axis")
-    .call(d3.axisLeft(y).ticks(5).tickSize(-innerWidth).tickFormat(() => ""));
-  plot.append("g").attr("class", "axis")
-    .attr("transform", `translate(0,${innerHeight})`)
-    .call(d3.axisBottom(x).tickValues(xTicks).tickFormat((value) =>
-      value >= 1000 ? `${value / 1000}k` : String(value),
-    ));
-  plot.append("g").attr("class", "axis")
-    .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")));
-  const line = d3.line()
-    .defined((row) =>
-      Number(row.launches_so_far) > 0
-      && Number.isFinite(Number(row.success_rate_so_far))
-      && Number(row.success_rate_so_far) >= 0
-      && Number(row.success_rate_so_far) <= 1,
-    )
-    .x((row) => x(Number(row.launches_so_far)))
-    .y((row) => y(Number(row.success_rate_so_far)));
-
-  for (const [actor, series] of grouped) {
-    const ordered = series.sort((a, b) => Number(a.launches_so_far) - Number(b.launches_so_far));
-    const selected = !state.actor || state.actor === actor;
-    plot.append("path").datum(ordered)
-      .attr("fill", "none").attr("stroke", ACTOR_COLORS[actor] || ACTOR_COLORS.Outros)
-      .attr("stroke-width", state.actor === actor ? 2.8 : 1.65)
-      .attr("stroke-opacity", selected ? 0.86 : FADED_OPACITY)
-      .attr("clip-path", "url(#learning-plot-clip)")
-      .attr("d", line);
+  const [startYear, endYear] = state.years;
+  const otherOutcomes = OUTCOME_ORDER.filter((outcome) => outcome !== "sucesso");
+  const binCount = Math.ceil((endYear - startYear + 1) / 3);
+  const bins = Array.from({ length: binCount }, (_, index) => {
+    const firstYear = startYear + index * 3;
+    const lastYear = Math.min(firstYear + 2, endYear);
+    return {
+      firstYear,
+      lastYear,
+      label: firstYear === lastYear ? String(firstYear) : `${firstYear}–${lastYear}`,
+      counts: Object.fromEntries(OUTCOME_ORDER.map((outcome) => [outcome, 0])),
+    };
+  });
+  for (const row of rows) {
+    const bin = bins[Math.floor((Number(row.year) - startYear) / 3)];
+    if (bin && Object.hasOwn(bin.counts, row.outcome)) {
+      bin.counts[row.outcome] += Number(row.launches);
+    }
   }
-  const legend = d3.select(element.parentElement).select(".learning-legend");
-  legend.html("").selectAll("span").data(ACTOR_ORDER).join("span")
-    .style("opacity", (actor) =>
-      (!state.actor || state.actor === actor) ? 1 : FADED_OPACITY,
-    )
-    .each(function (actor) {
-      d3.select(this).append("i").style("background", ACTOR_COLORS[actor]);
-      d3.select(this).append("span").text(actor);
+  for (const bin of bins) {
+    bin.total = d3.sum(OUTCOME_ORDER, (outcome) => bin.counts[outcome]);
+    bin.otherTotal = d3.sum(otherOutcomes, (outcome) => bin.counts[outcome]);
+    bin.successShare = bin.total ? bin.counts.sucesso / bin.total : 0;
+    for (const outcome of otherOutcomes) {
+      bin[outcome] = bin.otherTotal ? bin.counts[outcome] / bin.otherTotal : 0;
+    }
+  }
+
+  const binLabels = bins.map((bin) => bin.label);
+  const x = d3.scaleBand().domain(binLabels).range([0, innerWidth]).padding(0.18);
+  const tickStep = Math.max(1, Math.ceil(bins.length / Math.max(2, Math.floor(innerWidth / 62))));
+  const xTickValues = bins
+    .filter((_bin, index) => index % tickStep === 0 || index === bins.length - 1)
+    .map((bin) => bin.label);
+  const panelGap = 30;
+  const panelHeight = (height - margin.top - margin.bottom - panelGap) / 2;
+  const successY = d3.scaleLinear().domain([0, 1]).range([panelHeight, 0]);
+  const otherY = d3.scaleLinear().domain([0, 1]).range([panelHeight, 0]);
+  const filters = [
+    state.actor && `ator ${state.actor}`,
+    state.sector && `setor ${state.sector}`,
+  ].filter(Boolean);
+  const filterDescription = filters.length ? ` para ${filters.join(" e ")}` : "";
+  const svg = svgRoot(
+    element,
+    width,
+    height,
+    `Resultados dos lançamentos em blocos de três anos${filterDescription}, de ${startYear} a ${endYear}. O painel superior mostra a proporção de sucessos e o inferior a composição dos demais resultados.`,
+  );
+  const successPanel = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+  const otherPanel = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top + panelHeight + panelGap})`);
+  const percentTicks = [0, 0.5, 1];
+  const addPercentAxes = (panel, scale) => {
+    panel.append("g").attr("class", "grid-axis")
+      .call(d3.axisLeft(scale).tickValues(percentTicks).tickSize(-innerWidth).tickFormat(() => ""));
+    panel.append("g").attr("class", "axis")
+      .call(d3.axisLeft(scale).tickValues(percentTicks).tickFormat(d3.format(".0%")));
+  };
+  addPercentAxes(successPanel, successY);
+  addPercentAxes(otherPanel, otherY);
+  successPanel.append("text").attr("class", "chart-panel-title")
+    .attr("x", 0).attr("y", -8)
+    .text("Sucesso (% de todos os lançamentos)");
+  otherPanel.append("text").attr("class", "chart-panel-title")
+    .attr("x", 0).attr("y", -8)
+    .text("Outros resultados (composição entre não sucessos)");
+
+  const successMarks = successPanel.selectAll(".success-bin")
+    .data(bins.filter((bin) => bin.total > 0))
+    .join("g")
+    .attr("class", "success-bin")
+    .attr("transform", (bin) => `translate(${x(bin.label)},0)`)
+    .on("pointermove", (event, bin) => {
+      const count = bin.counts.sucesso;
+      tooltip(element, event,
+        `${bin.label} · Sucesso: ${fmtInt.format(count)} de ${fmtInt.format(bin.total)} lançamentos (${fmtPct(bin.successShare)})`);
+    })
+    .on("pointerleave", () => hideTooltip(element));
+  successMarks.append("rect")
+    .attr("width", x.bandwidth())
+    .attr("height", panelHeight)
+    .attr("fill", "#f1efe8");
+  successMarks.append("rect")
+    .attr("y", (bin) => successY(bin.successShare))
+    .attr("width", x.bandwidth())
+    .attr("height", (bin) => panelHeight - successY(bin.successShare))
+    .attr("fill", OUTCOME_COLORS.sucesso);
+  successMarks.append("title")
+    .text((bin) =>
+      `${bin.label} · Sucesso: ${fmtInt.format(bin.counts.sucesso)} de ${fmtInt.format(bin.total)} (${fmtPct(bin.successShare)})`,
+    );
+
+  const stackedOthers = d3.stack().keys(otherOutcomes)(bins);
+  otherPanel.append("g").selectAll("g")
+    .data(stackedOthers, (series) => series.key)
+    .join("g")
+    .attr("fill", (series) => OUTCOME_COLORS[series.key])
+    .selectAll("rect")
+    .data((series) => series.map((segment) => ({ segment, outcome: series.key })))
+    .join("rect")
+    .attr("x", ({ segment }) => x(segment.data.label))
+    .attr("y", ({ segment }) => otherY(segment[1]))
+    .attr("width", x.bandwidth())
+    .attr("height", ({ segment }) => Math.max(0, otherY(segment[0]) - otherY(segment[1])))
+    .on("pointermove", (event, { segment, outcome }) => {
+      const count = segment.data.counts[outcome];
+      tooltip(element, event,
+        `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.total)} de todos; ${fmtPct(segment[1] - segment[0])} entre os outros resultados, n=${fmtInt.format(segment.data.otherTotal)})`);
+    })
+    .on("pointerleave", () => hideTooltip(element))
+    .append("title")
+    .text(({ segment, outcome }) => {
+      const count = segment.data.counts[outcome];
+      return `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.total)} de todos; ${fmtPct(segment[1] - segment[0])} entre os outros resultados)`;
+    });
+
+  svg.append("g").attr("class", "axis")
+    .attr("transform", `translate(${margin.left},${margin.top + panelHeight * 2 + panelGap})`)
+    .call(d3.axisBottom(x).tickValues(xTickValues));
+
+  if (!rows.length) {
+    svg.append("text")
+      .attr("class", "empty-state")
+      .attr("x", width / 2)
+      .attr("y", height / 2)
+      .attr("text-anchor", "middle")
+      .text("Sem lançamentos para os filtros atuais.");
+  }
+
+  const legend = d3.select(element.parentElement).select(".outcome-legend");
+  legend.html("").selectAll("span").data(OUTCOME_ORDER).join("span")
+    .each(function (outcome) {
+      d3.select(this).append("i").style("background", OUTCOME_COLORS[outcome]);
+      d3.select(this).append("span").text(OUTCOME_LABELS[outcome]);
     });
 }
 
@@ -324,16 +409,23 @@ export function drawMap(element, sites, world, state) {
     `Bases${focus} entre ${state.years[0]} e ${state.years[1]}; o tamanho representa o volume de lançamentos.`;
 }
 
-function drawTrendChart(element, rows, label, color) {
+function drawTrendChart(element, rows, label, color, selectedYears) {
   if (!rows.length) {
     element.textContent = "Nenhum lançamento neste intervalo.";
-    element.className = "detail-empty";
+    element.classList.add("detail-empty");
     return;
   }
+  element.classList.remove("detail-empty");
   const { width, height } = chartSize(element, 100);
-  const margin = { top: 8, right: 6, bottom: 19, left: 6 };
+  const margin = { top: 8, right: 22, bottom: 19, left: 22 };
+  const [startYear, endYear] = selectedYears;
+  const yearCount = endYear - startYear + 1;
+  const tickCount = Math.min(yearCount, yearCount <= 6 ? yearCount : 4);
+  const tickValues = Array.from({ length: tickCount }, (_, index) =>
+    Math.round(startYear + index * (yearCount - 1) / Math.max(1, tickCount - 1)),
+  );
   const x = d3.scaleLinear()
-    .domain(d3.extent(rows, (row) => Number(row.year)))
+    .domain(selectedYears)
     .range([margin.left, width - margin.right]);
   const max = d3.max(rows, (row) => Number(row.launches)) || 1;
   const y = d3.scaleLinear().domain([0, max]).nice()
@@ -352,103 +444,44 @@ function drawTrendChart(element, rows, label, color) {
     .append("title").text((row) => `${row.year}: ${fmtInt.format(row.launches)} lançamentos`);
   svg.append("g").attr("class", "axis")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).ticks(4).tickFormat(d3.format("d")));
+    .call(d3.axisBottom(x).tickValues(tickValues).tickFormat(d3.format("d")));
 }
 
-export function drawSectorDetail(element, rows, sector, ranking, onActor) {
-  const total = d3.sum(rows, (row) => Number(row.launches)) || 0;
-  const successTotal = d3.sum(rows, (row) => Number(row.success_total) || 0);
-  const successCount = d3.sum(rows, (row) => Number(row.success_count) || 0);
-  const successRate = successCount ? successTotal / successCount : null;
+export function drawFocusSummary(element, label, value, emptyMessage) {
   element.innerHTML = `
-    <div class="detail-card-top">
-      <p class="eyebrow">Setor em foco</p>
-      <h3 class="detail-name"></h3>
-      <p class="detail-subtitle">Intervalo selecionado: ${rows[0]?.year ?? "—"}–${rows.at(-1)?.year ?? "—"}</p>
-    </div>
-    <div class="metric-grid">
-      <div><span class="metric-label">Lançamentos</span><strong class="metric-value">${fmtInt.format(total)}</strong></div>
-      <div><span class="metric-label">Sucesso médio</span><strong class="metric-value">${fmtPct(successRate)}</strong></div>
-    </div>
-    <p class="eyebrow">Ritmo anual</p>
-    <div class="detail-sparkline"></div>
-    <p class="chart-note">Cada ponto representa um ano com lançamentos.</p>
-    <div class="origin-list">
-      <p class="eyebrow">Atores neste setor · selecione para detalhar</p>
-      <ul></ul>
-    </div>
+    <p class="eyebrow"></p>
+    ${value ? '<h3 class="focus-name"></h3>' : ""}
+    ${value ? "" : '<p class="focus-message"></p>'}
   `;
-  element.querySelector(".detail-name").textContent = sector;
-  drawTrendChart(
-    element.querySelector(".detail-sparkline"),
-    rows,
-    sector,
-    SECTOR_COLORS[sector] || COLORS.accent,
-  );
-  const list = element.querySelector(".origin-list ul");
-  if (!ranking.length) {
-    const item = document.createElement("li");
-    item.textContent = "Nenhum lançamento neste setor e intervalo.";
-    list.append(item);
-    return;
-  }
-  for (const actor of ranking.slice(0, 5)) {
-    const item = document.createElement("li");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "detail-actor-button";
-    button.textContent = actor.actor;
-    button.addEventListener("click", () => onActor(actor.actor));
-    const count = document.createElement("strong");
-    count.textContent = fmtInt.format(actor.launches);
-    item.append(button, count);
-    list.append(item);
-  }
+  element.querySelector(".eyebrow").textContent = label;
+  if (value) element.querySelector(".focus-name").textContent = value;
+  else element.querySelector(".focus-message").textContent = emptyMessage;
 }
 
-export function drawDetail(element, rows, actor, ranking, origins) {
+export function drawDetailChart(element, noteElement, originsElement, rows, actor, origins, years) {
+  noteElement.hidden = !actor;
+  originsElement.hidden = !actor;
+  originsElement.innerHTML = "";
   if (!actor) {
-    element.innerHTML = '<div class="detail-empty">Selecione um ator no ranking ou na legenda para ver sua trajetória.</div>';
+    element.innerHTML = '<div class="detail-empty">Selecione um ator para ver o ritmo anual.</div>';
     return;
   }
-  const total = d3.sum(rows, (row) => Number(row.launches)) || 0;
-  const actorRow = ranking.find((row) => row.actor === actor);
-  element.innerHTML = `
-    <div class="detail-card-top">
-      <p class="eyebrow">Ator em foco</p>
-      <h3 class="detail-name"></h3>
-      <p class="detail-subtitle">Intervalo selecionado: ${rows[0]?.year ?? "—"}–${rows.at(-1)?.year ?? "—"}</p>
-    </div>
-    <div class="metric-grid">
-      <div><span class="metric-label">Lançamentos</span><strong class="metric-value">${fmtInt.format(total)}</strong></div>
-      <div><span class="metric-label">Sucesso médio</span><strong class="metric-value">${fmtPct(actorRow?.success_rate)}</strong></div>
-    </div>
-    <p class="eyebrow">Ritmo anual</p>
-    <div class="detail-sparkline"></div>
-    <p class="chart-note">Cada ponto representa um ano com lançamentos.</p>
-    <div class="origin-list">
-      <p class="eyebrow">Operadores e países no grupo</p>
-      <ul></ul>
-    </div>
-  `;
-  element.querySelector(".detail-name").textContent = actor;
-  const chart = element.querySelector(".detail-sparkline");
-  drawTrendChart(chart, rows, actor, ACTOR_COLORS[actor] || ACTOR_COLORS.Outros);
-
-  const originList = element.querySelector(".origin-list ul");
-  if (origins.length) {
-    for (const origin of origins) {
-      const item = document.createElement("li");
-      const name = document.createElement("span");
-      name.textContent = `${origin.org_name || "Operador não identificado"} · ${origin.org_state}`;
-      const count = document.createElement("strong");
-      count.textContent = fmtInt.format(origin.launches);
-      item.append(name, count);
-      originList.append(item);
-    }
-  } else {
+  drawTrendChart(element, rows, actor, ACTOR_COLORS[actor] || ACTOR_COLORS.Outros, years);
+  originsElement.innerHTML = '<p class="eyebrow">Operadores e países no grupo</p><ul></ul>';
+  const originList = originsElement.querySelector("ul");
+  if (!origins.length) {
     const item = document.createElement("li");
     item.textContent = "País de origem não informado pelo GCAT.";
+    originList.append(item);
+    return;
+  }
+  for (const origin of origins) {
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = `${origin.org_name || "Operador não identificado"} · ${origin.org_state}`;
+    const count = document.createElement("strong");
+    count.textContent = fmtInt.format(origin.launches);
+    item.append(name, count);
     originList.append(item);
   }
 }

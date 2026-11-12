@@ -25,7 +25,6 @@ const readGcat = (file, columns) =>
     quote='', null_padding=true, names=[${columns.map((column) => `'${column}'`).join(", ")}])`;
 
 let initPromise;
-let learningPromise;
 
 export function initLaunchData() {
   if (!initPromise) {
@@ -113,7 +112,6 @@ export function initLaunchData() {
   }
   return initPromise;
 }
-
 export async function getSummary() {
   await initLaunchData();
   const [summary] = await query(`
@@ -148,35 +146,17 @@ export async function getRanking([start, end], sector) {
   `, [start, end, sector, sector]);
 }
 
-const learningPromises = new Map();
-export function getLearningCurve() {
-  return getLearningCurveForSector(null);
-}
-
-export function getLearningCurveForSector(sector) {
-  if (!learningPromises.has(sector)) {
-    learningPromises.set(sector, (async () => {
-      await initLaunchData();
-      // A janela segue a data juliana, que ordena corretamente os lançamentos
-      // dentro do ano; AVG ignora resultados sem taxa definida (abortos).
-      // O filtro de setor é aplicado antes da janela para medir a experiência
-      // específica daquele setor e não uma trajetória de todos os lançamentos.
-      return query(`
-        SELECT actor, jd,
-               row_number() OVER w AS launches_so_far,
-               avg(success_fraction) OVER w AS success_rate_so_far
-        FROM launches
-        WHERE success_fraction IS NOT NULL AND jd IS NOT NULL
-          AND (? IS NULL OR sector = ?)
-        WINDOW w AS (
-          PARTITION BY actor ORDER BY jd
-          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )
-        ORDER BY actor, jd;
-      `, [sector, sector]);
-    })());
-  }
-  return learningPromises.get(sector);
+export async function getOutcomeComposition([start, end], actor, sector) {
+  await initLaunchData();
+  return query(`
+    SELECT year, outcome, count(*) AS launches
+    FROM launches
+    WHERE year BETWEEN ? AND ?
+      AND (? IS NULL OR actor = ?)
+      AND (? IS NULL OR sector = ?)
+    GROUP BY year, outcome
+    ORDER BY year, outcome;
+  `, [start, end, actor, actor, sector, sector]);
 }
 
 export async function getSites([start, end], actor, sector) {
@@ -218,18 +198,4 @@ export async function getActorOrigins([start, end], actor, sector) {
     ORDER BY launches DESC
     LIMIT 5;
   `, [start, end, actor, sector, sector]);
-}
-
-export async function getSectorDetail([start, end], sector) {
-  await initLaunchData();
-  if (!sector) return [];
-  return query(`
-    SELECT year, count(*) AS launches,
-           sum(success_fraction) AS success_total,
-           count(success_fraction) AS success_count
-    FROM launches
-    WHERE year BETWEEN ? AND ? AND sector = ?
-    GROUP BY year
-    ORDER BY year;
-  `, [start, end, sector]);
 }

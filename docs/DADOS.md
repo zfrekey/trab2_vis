@@ -29,9 +29,10 @@ cabeçalho e são lidos como texto antes da conversão explícita dos tipos.
 - O resultado é preservado em categorias. A fração de sucesso usa 1 para
   sucesso, 0 para falha e a fração indicada pelo GCAT para resultados parciais.
   Explosões na plataforma, abortos e resultados incertos não entram na taxa.
-- A curva de aprendizado calcula posição e média acumulada em SQL com janela
-  ordenada pela data juliana; anos da linha do tempo e rankings também são
-  agregados no DuckDB-Wasm.
+- A composição de resultados é consultada por ano e categoria no DuckDB-Wasm e
+  reagrupada em blocos de três anos na visualização. Sucessos são comparados
+  com todos os lançamentos; as demais categorias são normalizadas entre si.
+  Os filtros de período, ator e setor são aplicados antes da agregação.
 
 ## Limitações
 
