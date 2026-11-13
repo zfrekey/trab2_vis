@@ -170,6 +170,40 @@ main {
   color: var(--color-text-muted);
   font-size: 11px;
 }
+.focus-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 16px;
+}
+.focus-metric {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-bg);
+}
+.focus-metric-label {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.3;
+}
+.focus-metric-value {
+  display: block;
+  margin-top: 5px;
+  font-size: 14px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.focus-metric-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.3;
+}
 .detail-chart {
   min-width: 0;
   margin-top: 14px;
@@ -201,6 +235,12 @@ main {
   align-items: flex-start;
   gap: 12px;
 }
+.timeline-heading {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.timeline-heading > div:first-child { min-width: 0; }
+.timeline-color-switch { flex-shrink: 0; }
 .card h2 {
   margin: 0;
   font: 500 21px/1.2 var(--font-serif);
@@ -240,19 +280,17 @@ main {
 }
 .legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
 .timeline-legend button.is-selected { color: var(--color-text); font-weight: 700; }
-.outcome-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  margin-top: 7px;
-  color: var(--color-text-muted);
-  font-size: 10px;
+.outcome-panel-legend text {
+  fill: var(--color-text-muted);
+  font: 10px var(--font-sans);
 }
-.outcome-legend span { display: inline-flex; align-items: center; gap: 5px; }
-.outcome-legend i { width: 9px; height: 9px; border-radius: 2px; }
 .chart-panel-title {
   fill: var(--color-text);
   font: 600 10px var(--font-sans);
+}
+.success-panel-legend text {
+  fill: var(--color-text-muted);
+  font: 10px var(--font-sans);
 }
 .ranking-tools {
   display: grid;
@@ -260,21 +298,24 @@ main {
   gap: 7px;
   margin: 16px 0 10px;
 }
-.ranking-pinned-controls {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: -20px -20px 26px;
-  padding: 10px 16px;
-  background: var(--color-surface);
+.ranking-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  margin-bottom: 12px;
 }
-.ranking-pinned-controls .color-switch button,
-.ranking-pinned-controls .button { padding: 6px 8px; font-size: 11px; }
+.ranking-clear-button {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.ranking-hint {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
 .ranking-tools .eyebrow { font-size: 8px; letter-spacing: .1em; white-space: nowrap; }
 .sector-control { min-width: 0; }
 .sector-control select, .sort-control select {

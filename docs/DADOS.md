@@ -30,9 +30,11 @@ cabeçalho e são lidos como texto antes da conversão explícita dos tipos.
   sucesso, 0 para falha e a fração indicada pelo GCAT para resultados parciais.
   Explosões na plataforma, abortos e resultados incertos não entram na taxa.
 - A composição de resultados é consultada por ano e categoria no DuckDB-Wasm e
-  reagrupada em blocos de três anos na visualização. Sucessos são comparados
-  com todos os lançamentos; as demais categorias são normalizadas entre si.
-  Os filtros de período, ator e setor são aplicados antes da agregação.
+  reagrupada em blocos de três anos na visualização. Sucessos e não sucessos
+  no painel superior usam como denominador todos os lançamentos. No painel
+  inferior, cada categoria é expressa como proporção dos não sucessos e o
+  tooltip também informa sua proporção em relação a todos os lançamentos. Os
+  filtros de período, ator e setor são aplicados antes da agregação.
 
 ## Limitações
 

@@ -64,18 +64,23 @@ export function drawTimeline(element, rows, state, onBrush, onActor, onSector) {
   }
 
   const x = d3.scaleLinear().domain([1957, 2026]).range([0, innerWidth]);
-  const stack = d3.stack().keys(categories)(years);
-  const maxTotal = d3.max(years, (row) => d3.sum(categories, (category) => row[category])) || 1;
-  const y = d3.scaleLinear().domain([0, maxTotal]).nice().range([innerHeight, 0]);
+  const maxLaunches = d3.max(years, (row) => d3.max(categories, (category) => row[category])) || 1;
+  const yTickStep = Math.max(1, d3.tickStep(0, maxLaunches, 5));
+  const yMaximum = Math.max(yTickStep, Math.ceil(maxLaunches / yTickStep) * yTickStep);
+  const y = d3.scaleLinear().domain([0, yMaximum]).range([innerHeight, 0]);
+  const selectedCategory = state.colorBy === "sector" ? state.sector : state.actor;
+  const lineCategories = selectedCategory && categories.includes(selectedCategory)
+    ? [...categories.filter((category) => category !== selectedCategory), selectedCategory]
+    : categories;
   const svg = svgRoot(
     element,
     width,
     height,
-    "Lançamentos orbitais por ano, empilhados por ator ou setor. Selecione um intervalo com o brush.",
+    "Séries de linhas mostram lançamentos orbitais anuais por ator ou setor. A seleção destaca a linha correspondente. O eixo vertical começa em zero.",
   );
   const plot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-  const yTicks = y.ticks(5);
+  const yTicks = d3.range(0, yMaximum + yTickStep / 2, yTickStep);
   const numberFormat = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 });
   plot.append("g").attr("class", "grid-axis")
     .call(d3.axisLeft(y).tickValues(yTicks).tickSize(-innerWidth).tickFormat(() => ""));
@@ -92,40 +97,28 @@ export function drawTimeline(element, rows, state, onBrush, onActor, onSector) {
     .attr("text-anchor", "middle")
     .text("Número de lançamentos");
 
-  const area = d3.area()
-    .x((point) => x(point.data.year))
-    .y0((point) => y(point[0]))
-    .y1((point) => y(point[1]));
+  const line = d3.line()
+    .x((point) => x(point.year))
+    .y((point) => y(point[point.category]));
   plot.append("g").selectAll("path")
-    .data(stack, (series) => series.key)
+    .data(lineCategories, (category) => category)
     .join("path")
-    .attr("d", area)
-    .attr("fill", (series) => colors[series.key])
-    .attr("fill-opacity", (series) => {
-      if (state.colorBy === "sector" && state.sector && state.sector !== series.key) {
-        return FADED_OPACITY;
-      }
-      if (state.colorBy === "actor" && state.actor && state.actor !== series.key) {
-        return FADED_OPACITY;
-      }
-      return 0.82;
-    })
-    .attr("stroke", (series) =>
-      (state.colorBy === "actor" && state.actor === series.key)
-        || (state.colorBy === "sector" && state.sector === series.key)
-        ? COLORS.highlight
-        : "white",
+    .attr("class", "timeline-series")
+    .attr("d", (category) => line(years.map((point) => ({ ...point, category }))))
+    .attr("fill", "none")
+    .attr("stroke", (category) => colors[category])
+    .attr("stroke-opacity", (category) =>
+      selectedCategory
+        ? category === selectedCategory ? 1 : FADED_OPACITY
+        : 0.82,
     )
-    .attr("stroke-width", (series) =>
-      (state.colorBy === "actor" && state.actor === series.key)
-        || (state.colorBy === "sector" && state.sector === series.key)
-        ? 1.5
-        : 0.55,
-    )
+    .attr("stroke-width", (category) => category === selectedCategory ? 3.5 : 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
     .style("cursor", "pointer")
-    .on("click", (_event, series) => {
-      if (state.colorBy === "actor") onActor(series.key);
-      else onSector(series.key);
+    .on("click", (_event, category) => {
+      if (state.colorBy === "actor") onActor(category);
+      else onSector(category);
     });
 
   const annotationRows = [-Infinity, -Infinity];
@@ -167,9 +160,9 @@ export function drawTimeline(element, rows, state, onBrush, onActor, onSector) {
   const selection = state.years.map((year) => x(year));
   brushLayer.call(brush.move, selection);
   brushLayer.selectAll(".selection")
-    .attr("fill", COLORS.highlight).attr("fill-opacity", 0.13)
-    .attr("stroke", COLORS.highlight).attr("stroke-width", 1);
-  brushLayer.selectAll(".handle").attr("fill", COLORS.highlight);
+    .attr("fill", COLORS.muted).attr("fill-opacity", 0.14)
+    .attr("stroke", COLORS.muted).attr("stroke-opacity", 0.65).attr("stroke-width", 1);
+  brushLayer.selectAll(".handle").attr("fill", COLORS.muted).attr("fill-opacity", 0.72);
 
   const legend = d3.select(element.parentElement).select(".timeline-legend");
   legend.html("");
@@ -225,7 +218,7 @@ export function drawRanking(element, rows, state, onActor) {
 }
 
 export function drawOutcomeComposition(element, rows, state) {
-  const { width, height } = chartSize(element, 400);
+  const { width, height } = chartSize(element, 460);
   const margin = { top: 22, right: 12, bottom: 38, left: 54 };
   const innerWidth = width - margin.left - margin.right;
   const [startYear, endYear] = state.years;
@@ -262,10 +255,34 @@ export function drawOutcomeComposition(element, rows, state) {
   const xTickValues = bins
     .filter((_bin, index) => index % tickStep === 0 || index === bins.length - 1)
     .map((bin) => bin.label);
-  const panelGap = 30;
-  const panelHeight = (height - margin.top - margin.bottom - panelGap) / 2;
+  const legendItems = otherOutcomes.map((outcome) => ({
+    outcome,
+    label: OUTCOME_LABELS[outcome],
+    width: OUTCOME_LABELS[outcome].length * 5.5 + 25,
+  }));
+  let legendX = 0;
+  let legendRow = 0;
+  for (const item of legendItems) {
+    if (legendX > 0 && legendX + item.width > innerWidth) {
+      legendRow += 1;
+      legendX = 0;
+    }
+    item.x = legendX;
+    item.row = legendRow;
+    legendX += item.width + 12;
+  }
+  const lowerLegendSpace = (legendRow + 1) * 16 + 4;
+  const panelGap = 22;
+  const xAxisSpace = 26;
+  const successLegendSpace = 22;
+  const panelHeight = (
+    height - margin.top - margin.bottom - panelGap - 2 * xAxisSpace
+      - successLegendSpace - lowerLegendSpace
+  ) / 2;
   const successY = d3.scaleLinear().domain([0, 1]).range([panelHeight, 0]);
   const otherY = d3.scaleLinear().domain([0, 1]).range([panelHeight, 0]);
+  const successTicks = [0, 0.25, 0.5, 0.75, 1];
+  const otherTicks = d3.range(0, 6).map((tick) => tick / 5);
   const filters = [
     state.actor && `ator ${state.actor}`,
     state.sector && `setor ${state.sector}`,
@@ -275,27 +292,29 @@ export function drawOutcomeComposition(element, rows, state) {
     element,
     width,
     height,
-    `Resultados dos lançamentos em blocos de três anos${filterDescription}, de ${startYear} a ${endYear}. O painel superior mostra a proporção de sucessos e o inferior a composição dos demais resultados.`,
+    `Resultados dos lançamentos em blocos de três anos${filterDescription}, de ${startYear} a ${endYear}. O painel superior mostra sucessos e não sucessos em relação a todos os lançamentos; o inferior mostra a distribuição relativa das categorias de não sucesso.`,
   );
   const successPanel = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
+  const successAxisY = margin.top + panelHeight;
+  const successLegendTop = successAxisY + xAxisSpace;
+  const otherTop = successLegendTop + successLegendSpace + panelGap;
   const otherPanel = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top + panelHeight + panelGap})`);
-  const percentTicks = [0, 0.5, 1];
-  const addPercentAxes = (panel, scale) => {
+    .attr("transform", `translate(${margin.left},${otherTop})`);
+  const addPercentAxes = (panel, scale, ticks) => {
     panel.append("g").attr("class", "grid-axis")
-      .call(d3.axisLeft(scale).tickValues(percentTicks).tickSize(-innerWidth).tickFormat(() => ""));
+      .call(d3.axisLeft(scale).tickValues(ticks).tickSize(-innerWidth).tickFormat(() => ""));
     panel.append("g").attr("class", "axis")
-      .call(d3.axisLeft(scale).tickValues(percentTicks).tickFormat(d3.format(".0%")));
+      .call(d3.axisLeft(scale).tickValues(ticks).tickFormat(d3.format(".0%")));
   };
-  addPercentAxes(successPanel, successY);
-  addPercentAxes(otherPanel, otherY);
+  addPercentAxes(successPanel, successY, successTicks);
+  addPercentAxes(otherPanel, otherY, otherTicks);
   successPanel.append("text").attr("class", "chart-panel-title")
     .attr("x", 0).attr("y", -8)
-    .text("Sucesso (% de todos os lançamentos)");
+    .text("Sucesso e não sucesso (% de todos os lançamentos)");
   otherPanel.append("text").attr("class", "chart-panel-title")
     .attr("x", 0).attr("y", -8)
-    .text("Outros resultados (composição entre não sucessos)");
+    .text("Composição dos não sucessos (% dos não sucessos)");
 
   const successMarks = successPanel.selectAll(".success-bin")
     .data(bins.filter((bin) => bin.total > 0))
@@ -305,13 +324,13 @@ export function drawOutcomeComposition(element, rows, state) {
     .on("pointermove", (event, bin) => {
       const count = bin.counts.sucesso;
       tooltip(element, event,
-        `${bin.label} · Sucesso: ${fmtInt.format(count)} de ${fmtInt.format(bin.total)} lançamentos (${fmtPct(bin.successShare)})`);
+        `${bin.label} · Sucesso: ${fmtInt.format(count)} (${fmtPct(bin.successShare)}); não sucesso: ${fmtInt.format(bin.otherTotal)} (${fmtPct(1 - bin.successShare)})`);
     })
     .on("pointerleave", () => hideTooltip(element));
   successMarks.append("rect")
     .attr("width", x.bandwidth())
     .attr("height", panelHeight)
-    .attr("fill", "#f1efe8");
+    .attr("fill", "#c8cbd1");
   successMarks.append("rect")
     .attr("y", (bin) => successY(bin.successShare))
     .attr("width", x.bandwidth())
@@ -319,13 +338,37 @@ export function drawOutcomeComposition(element, rows, state) {
     .attr("fill", OUTCOME_COLORS.sucesso);
   successMarks.append("title")
     .text((bin) =>
-      `${bin.label} · Sucesso: ${fmtInt.format(bin.counts.sucesso)} de ${fmtInt.format(bin.total)} (${fmtPct(bin.successShare)})`,
+      `${bin.label} · Sucesso: ${fmtInt.format(bin.counts.sucesso)} (${fmtPct(bin.successShare)}); não sucesso: ${fmtInt.format(bin.otherTotal)} (${fmtPct(1 - bin.successShare)})`,
     );
 
+  successPanel.append("g").attr("class", "axis")
+    .attr("transform", `translate(0,${panelHeight})`)
+    .call(d3.axisBottom(x).tickValues(xTickValues));
+
+  const successLegend = svg.append("g")
+    .attr("class", "success-panel-legend")
+    .attr("transform", `translate(${margin.left},${successLegendTop + 12})`);
+  const successLegendItems = [
+    { label: "Sucesso", color: OUTCOME_COLORS.sucesso, x: 0 },
+    { label: "Não sucesso", color: "#c8cbd1", x: 92 },
+  ];
+  const successLegendEntry = successLegend.selectAll("g")
+    .data(successLegendItems)
+    .join("g")
+    .attr("transform", (item) => `translate(${item.x},0)`);
+  successLegendEntry.append("rect")
+    .attr("width", 9).attr("height", 9).attr("rx", 1)
+    .attr("y", -7)
+    .attr("fill", (item) => item.color);
+  successLegendEntry.append("text")
+    .attr("x", 14).attr("y", 1)
+    .text((item) => item.label);
+
   const stackedOthers = d3.stack().keys(otherOutcomes)(bins);
-  otherPanel.append("g").selectAll("g")
+  otherPanel.selectAll("g.outcome-series")
     .data(stackedOthers, (series) => series.key)
     .join("g")
+    .attr("class", "outcome-series")
     .attr("fill", (series) => OUTCOME_COLORS[series.key])
     .selectAll("rect")
     .data((series) => series.map((segment) => ({ segment, outcome: series.key })))
@@ -333,22 +376,42 @@ export function drawOutcomeComposition(element, rows, state) {
     .attr("x", ({ segment }) => x(segment.data.label))
     .attr("y", ({ segment }) => otherY(segment[1]))
     .attr("width", x.bandwidth())
-    .attr("height", ({ segment }) => Math.max(0, otherY(segment[0]) - otherY(segment[1])))
+    .attr("height", ({ segment }) => Math.max(
+      0,
+      otherY(segment[0]) - otherY(segment[1]),
+    ))
     .on("pointermove", (event, { segment, outcome }) => {
       const count = segment.data.counts[outcome];
       tooltip(element, event,
-        `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.total)} de todos; ${fmtPct(segment[1] - segment[0])} entre os outros resultados, n=${fmtInt.format(segment.data.otherTotal)})`);
+        `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.otherTotal)} dos não sucessos; ${fmtPct(count / segment.data.total)} de todos os lançamentos)`);
     })
     .on("pointerleave", () => hideTooltip(element))
     .append("title")
     .text(({ segment, outcome }) => {
       const count = segment.data.counts[outcome];
-      return `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.total)} de todos; ${fmtPct(segment[1] - segment[0])} entre os outros resultados)`;
+      return `${segment.data.label} · ${OUTCOME_LABELS[outcome]}: ${fmtInt.format(count)} (${fmtPct(count / segment.data.otherTotal)} dos não sucessos; ${fmtPct(count / segment.data.total)} de todos os lançamentos)`;
     });
 
   svg.append("g").attr("class", "axis")
-    .attr("transform", `translate(${margin.left},${margin.top + panelHeight * 2 + panelGap})`)
+    .attr("transform", `translate(${margin.left},${otherTop + panelHeight})`)
     .call(d3.axisBottom(x).tickValues(xTickValues));
+
+  const outcomeLegend = svg.append("g")
+    .attr("class", "outcome-panel-legend")
+    .attr("role", "group")
+    .attr("aria-label", "Categorias de não sucesso")
+    .attr("transform", `translate(${margin.left},${otherTop + panelHeight + xAxisSpace + 12})`);
+  const outcomeLegendEntry = outcomeLegend.selectAll("g")
+    .data(legendItems)
+    .join("g")
+    .attr("transform", (item) => `translate(${item.x},${item.row * 16})`);
+  outcomeLegendEntry.append("rect")
+    .attr("width", 9).attr("height", 9).attr("rx", 1)
+    .attr("y", -7)
+    .attr("fill", (item) => OUTCOME_COLORS[item.outcome]);
+  outcomeLegendEntry.append("text")
+    .attr("x", 14).attr("y", 1)
+    .text((item) => item.label);
 
   if (!rows.length) {
     svg.append("text")
@@ -359,12 +422,6 @@ export function drawOutcomeComposition(element, rows, state) {
       .text("Sem lançamentos para os filtros atuais.");
   }
 
-  const legend = d3.select(element.parentElement).select(".outcome-legend");
-  legend.html("").selectAll("span").data(OUTCOME_ORDER).join("span")
-    .each(function (outcome) {
-      d3.select(this).append("i").style("background", OUTCOME_COLORS[outcome]);
-      d3.select(this).append("span").text(OUTCOME_LABELS[outcome]);
-    });
 }
 
 export function drawMap(element, sites, world, state) {
@@ -456,6 +513,45 @@ export function drawFocusSummary(element, label, value, emptyMessage) {
   element.querySelector(".eyebrow").textContent = label;
   if (value) element.querySelector(".focus-name").textContent = value;
   else element.querySelector(".focus-message").textContent = emptyMessage;
+}
+
+export function drawFocusMetrics(element, summary, actor, topActor, detailRows) {
+  const launches = Number(summary.launches);
+  const peakYear = actor
+    ? detailRows.reduce((peak, row) =>
+      !peak || Number(row.launches) > Number(peak.launches) ? row : peak, null)
+    : null;
+  const metrics = [
+    { label: "Lançamentos", value: fmtInt.format(launches), note: "no período selecionado" },
+    { label: "Sucesso GCAT", value: fmtPct(summary.success_rate), note: "indicador propulsivo" },
+    actor
+      ? {
+          label: "Ano de pico",
+          value: peakYear ? String(peakYear.year) : "—",
+          note: peakYear ? `${fmtInt.format(peakYear.launches)} lançamentos` : "sem lançamentos",
+        }
+      : {
+          label: "Ator líder",
+          value: topActor || "—",
+          note: topActor ? "mais lançamentos" : "sem registros",
+        },
+  ];
+  element.replaceChildren();
+  for (const metric of metrics) {
+    const card = document.createElement("div");
+    card.className = "focus-metric";
+    const label = document.createElement("p");
+    label.className = "focus-metric-label";
+    label.textContent = metric.label;
+    const value = document.createElement("strong");
+    value.className = "focus-metric-value";
+    value.textContent = metric.value;
+    const note = document.createElement("span");
+    note.className = "focus-metric-note";
+    note.textContent = metric.note;
+    card.append(label, value, note);
+    element.append(card);
+  }
 }
 
 export function drawDetailChart(element, noteElement, originsElement, rows, actor, origins, years) {

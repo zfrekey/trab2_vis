@@ -2,6 +2,7 @@ import "./shared/styles/style.css";
 import {
   getActorDetail,
   getActorOrigins,
+  getFocusSummary,
   getOutcomeComposition,
   getRanking,
   getSites,
@@ -11,6 +12,7 @@ import {
 import { getState, setState, subscribe } from "./state/store.js";
 import {
   drawDetailChart,
+  drawFocusMetrics,
   drawFocusSummary,
   drawMap,
   drawOutcomeComposition,
@@ -38,16 +40,20 @@ app.innerHTML = `
     </div>
     <section class="dashboard-grid" aria-label="Painel interativo de lançamentos orbitais">
       <article class="card card-timeline">
-        <div class="card-heading">
+        <div class="card-heading timeline-heading">
           <div>
             <p class="eyebrow">Panorama histórico</p>
             <h2>O ritmo de lançamento muda com o tempo</h2>
             <p class="card-description">Quem puxou cada era — e quando o volume de lançamentos acelerou?</p>
           </div>
+          <div class="color-switch timeline-color-switch" role="group" aria-label="Colorir linha do tempo por">
+            <button type="button" data-color-by="actor" aria-pressed="true">Quem lança</button>
+            <button type="button" data-color-by="sector" aria-pressed="false">Que setor</button>
+          </div>
         </div>
         <div class="chart" id="timeline-chart"><div class="loading-state">Preparando a linha do tempo…</div></div>
         <ul class="timeline-legend" aria-label="Legenda e seleção de atores"></ul>
-        <p class="chart-note">Arraste na série para filtrar os anos. Clique na legenda para selecionar um ator ou setor e coordenar as views.</p>
+        <p class="chart-note">Arraste na série para filtrar os anos. Clique na legenda para selecionar um ator ou setor e coordenar as views. O eixo Y começa em zero.</p>
       </article>
       <article class="card card-detail">
         <p class="eyebrow">Leitura em foco</p>
@@ -61,27 +67,25 @@ app.innerHTML = `
           <div class="detail-empty">Selecione um ator para ver o ritmo anual.</div>
         </div>
         <p class="chart-note detail-chart-note" id="actor-detail-note" hidden>Cada ponto representa um ano com lançamentos.</p>
+        <section class="focus-metrics" id="focus-metrics" aria-label="Resumo da seleção"></section>
         <div class="origin-list" id="actor-origins"></div>
       </article>
       <article class="card card-outcomes">
         <p class="eyebrow">Resultados por ano</p>
         <h2>Como os resultados dos lançamentos mudaram?</h2>
-        <p class="card-description">Os lançamentos são agrupados em blocos de três anos. O painel superior mostra a taxa de sucesso; o inferior amplia a composição dos demais resultados.</p>
+        <p class="card-description">Os lançamentos são agrupados em blocos de três anos. O painel superior compara sucessos e não sucessos; o inferior mostra a distribuição relativa das categorias de não sucesso.</p>
         <div class="chart" id="outcomes-chart"><div class="loading-state">Consultando os resultados por ano…</div></div>
-        <div class="outcome-legend" aria-label="Categorias de resultado"></div>
-        <p class="chart-note">O painel inferior compara os resultados diferentes de sucesso entre si (inclui parciais). Passe o cursor para ver contagens e percentuais no total e entre os demais resultados.</p>
+        <p class="chart-note">No painel inferior, cada barra soma 100% dos não sucessos do bloco. O tooltip também informa a proporção de cada categoria sobre todos os lançamentos.</p>
       </article>
       <article class="card card-ranking">
-        <div class="ranking-pinned-controls">
-          <div class="color-switch" role="group" aria-label="Colorir linha do tempo por">
-            <button type="button" data-color-by="actor" aria-pressed="true">Quem lança</button>
-            <button type="button" data-color-by="sector" aria-pressed="false">Que setor</button>
+        <div class="ranking-heading">
+          <div>
+            <p class="eyebrow">Comparação</p>
+            <h2>Filtros</h2>
           </div>
-          <button class="button" id="clear-filters" type="button">Limpar filtros</button>
+          <button class="button ranking-clear-button" id="clear-filters" type="button">Limpar filtros</button>
+          <p class="ranking-hint">Clique em um ator do ranking para filtrar; use “Filtrar setor” para restringir por setor.</p>
         </div>
-        <p class="eyebrow">Comparação</p>
-        <h2>Quem lançou mais?</h2>
-        <p class="card-description">Compare volume e taxa média no intervalo selecionado. Clique em um ator da lista para selecioná-lo.</p>
         <div class="ranking-tools">
           <label class="sector-control">
             <span class="eyebrow">Filtrar setor</span>
@@ -146,6 +150,7 @@ const elements = {
   actorFocus: document.querySelector("#actor-focus"),
   sectorFocus: document.querySelector("#sector-focus"),
   detailPeriod: document.querySelector("#detail-period"),
+  focusMetrics: document.querySelector("#focus-metrics"),
   detailChart: document.querySelector("#actor-detail-chart"),
   detailNote: document.querySelector("#actor-detail-note"),
   origins: document.querySelector("#actor-origins"),
@@ -187,6 +192,13 @@ function redraw(state) {
   drawFocusSummary(elements.actorFocus, "Ator em foco", state.actor, "Nenhum ator em foco.");
   drawFocusSummary(elements.sectorFocus, "Setor em foco", state.sector, "Nenhum setor selecionado.");
   elements.detailPeriod.textContent = `Intervalo selecionado: ${state.years[0]}–${state.years[1]}`;
+  drawFocusMetrics(
+    elements.focusMetrics,
+    currentData.focusSummary,
+    state.actor,
+    currentData.ranking.length ? currentData.ranking[0].actor : null,
+    currentData.detail,
+  );
   drawDetailChart(
     elements.detailChart,
     elements.detailNote,
@@ -200,28 +212,29 @@ function redraw(state) {
 }
 
 function selectActor(actor) {
-  setState({ actor: getState().actor === actor ? null : actor });
+  setState({ actor: getState().actor === actor ? null : actor, colorBy: "actor" });
 }
 
 function selectSector(sector) {
   const selected = getState().sector === sector ? null : sector;
-  setState({ sector: selected, colorBy: "sector" });
+  setState({ sector: selected });
 }
 
 async function refresh(state) {
   const id = ++refreshId;
   updateFilterStatus(state);
   try {
-    const [timeline, ranking, outcomes, sites, detail, origins] = await Promise.all([
+    const [timeline, ranking, focusSummary, outcomes, sites, detail, origins] = await Promise.all([
       getTimeline(state.colorBy, state.sector),
       getRanking(state.years, state.sector),
+      getFocusSummary(state.years, state.actor, state.sector),
       getOutcomeComposition(state.years, state.actor, state.sector),
       getSites(state.years, state.actor, state.sector),
       getActorDetail(state.years, state.actor, state.sector),
       getActorOrigins(state.years, state.actor, state.sector),
     ]);
     if (id !== refreshId) return;
-    currentData = { timeline, ranking, outcomes, sites, detail, origins };
+    currentData = { timeline, ranking, focusSummary, outcomes, sites, detail, origins };
     redraw(state);
   } catch (error) {
     if (id !== refreshId) return;
@@ -234,6 +247,7 @@ async function refresh(state) {
       elements.actorFocus,
       elements.sectorFocus,
       elements.detailPeriod,
+      elements.focusMetrics,
       elements.detailChart,
       elements.origins,
     ]) {
@@ -253,7 +267,7 @@ elements.clear.addEventListener("click", () =>
   setState({ years: [1957, 2026], actor: null, sector: null }),
 );
 document.querySelector("#sector-filter").addEventListener("change", (event) => {
-  setState({ sector: event.target.value || null, colorBy: "sector" });
+  setState({ sector: event.target.value || null });
 });
 document.querySelector("#about-open").addEventListener("click", () => elements.dialog.showModal());
 document.querySelector("#about-close").addEventListener("click", () => elements.dialog.close());

@@ -146,6 +146,18 @@ export async function getRanking([start, end], sector) {
   `, [start, end, sector, sector]);
 }
 
+export async function getFocusSummary([start, end], actor, sector) {
+  await initLaunchData();
+  const [summary] = await query(`
+    SELECT count(*) AS launches, avg(success_fraction) AS success_rate
+    FROM launches
+    WHERE year BETWEEN ? AND ?
+      AND (? IS NULL OR actor = ?)
+      AND (? IS NULL OR sector = ?);
+  `, [start, end, actor, actor, sector, sector]);
+  return summary;
+}
+
 export async function getOutcomeComposition([start, end], actor, sector) {
   await initLaunchData();
   return query(`

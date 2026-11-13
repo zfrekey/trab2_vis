@@ -28,15 +28,16 @@ TSV/CSV localmente. Não há backend nem API em runtime.
 
 - Arraste sobre a linha do tempo para filtrar o período; todas as demais views
   respondem ao intervalo.
-- Alterne entre **Quem lança** e **Que setor** para mudar a leitura da área
-  empilhada.
+- Alterne entre **Quem lança** e **Que setor** para ver as séries de linhas por
+  ator ou setor; uma seleção destaca a linha correspondente.
 - Selecione um ator na legenda ou clique em seu nome no ranking para coordenar
   destaque, mapa e painel de detalhe. Clique novamente para limpar a seleção.
 - Use **Filtrar setor** para restringir ranking, composição de resultados, mapa
   e painel às categorias Comercial, Civil, Militar ou Indefinido. O gráfico de
   resultados também acompanha os filtros de ator e setor e mostra a composição
-  percentual em blocos de três anos. A seleção de um ator dentro do setor
-  continua disponível no ranking e no painel de detalhe.
+  percentual em blocos de três anos; o painel inferior mostra a distribuição
+  relativa dos não sucessos. A seleção de um ator
+  dentro do setor continua disponível no ranking e no painel de detalhe.
 - Todos os atores aparecem no ranking e podem ser selecionados com um clique.
   Ordene a lista por volume ou taxa de sucesso.
 - Abra **Sobre os dados** para fontes, definições e limitações.

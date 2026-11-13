@@ -15,7 +15,7 @@ export const ACTOR_COLORS = {
   Europa: "#2e7d4f",
   Japão: "#a3487f",
   Índia: "#00808a",
-  Outros: "#b8b4aa",
+  Outros: "#7054c5",
 };
 
 export const SECTOR_ORDER = ["Comercial", "Civil", "Militar", "Indefinido"];
